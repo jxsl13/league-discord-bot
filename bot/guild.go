@@ -19,6 +19,18 @@ import (
 )
 
 func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandData) *api.InteractionResponseData {
+	q, err := b.Queries(b.ctx)
+	if err != nil {
+		err = fmt.Errorf("error getting queries: %w", err)
+		log.Println(err)
+		return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))
+	}
+	defer q.Close()
+
+	err = b.checkAccess(ctx, q, data.Event, ADMIN)
+	if err != nil {
+		return errorResponse(err)
+	}
 
 	categoryID, err := data.Options.Find("category_id").SnowflakeValue()
 	if err != nil {
@@ -34,14 +46,6 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 	if err != nil {
 		return errorResponse(err)
 	}
-
-	q, err := b.Queries(b.ctx)
-	if err != nil {
-		err = fmt.Errorf("error getting queries: %w", err)
-		log.Println(err)
-		return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))
-	}
-	defer q.Close()
 
 	err = q.UpdateGuildConfig(b.ctx, sqlc.UpdateGuildConfigParams{
 		GuildID:             data.Event.GuildID.String(),

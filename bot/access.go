@@ -12,6 +12,7 @@ import (
 const (
 	READ  PermissionEnum = "READ"
 	WRITE PermissionEnum = "WRITE"
+	ADMIN PermissionEnum = "ADMIN"
 )
 
 var (
@@ -43,6 +44,10 @@ func (b *Bot) checkAccess(ctx context.Context, q *sqlc.Queries, e *discord.Inter
 func (b *Bot) hasEventAccess(ctx context.Context, q *sqlc.Queries, e *discord.InteractionEvent, permission PermissionEnum) (bool, error) {
 	if e.Channel.SelfPermissions.Has(discord.PermissionAdministrator) {
 		return true, nil
+	}
+
+	if permission == ADMIN {
+		return e.Channel.SelfPermissions.Has(discord.PermissionAdministrator), nil
 	}
 
 	ok, err := b.hasAccess(ctx, q, e.GuildID, e.User, permission)
