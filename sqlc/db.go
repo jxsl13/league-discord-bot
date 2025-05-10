@@ -42,8 +42,8 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addMatchStmt, err = db.PrepareContext(ctx, addMatch); err != nil {
 		return nil, fmt.Errorf("error preparing query AddMatch: %w", err)
 	}
-	if q.addMatchModeratorRoleStmt, err = db.PrepareContext(ctx, addMatchModeratorRole); err != nil {
-		return nil, fmt.Errorf("error preparing query AddMatchModeratorRole: %w", err)
+	if q.addMatchModeratorStmt, err = db.PrepareContext(ctx, addMatchModerator); err != nil {
+		return nil, fmt.Errorf("error preparing query AddMatchModerator: %w", err)
 	}
 	if q.addMatchStreamerStmt, err = db.PrepareContext(ctx, addMatchStreamer); err != nil {
 		return nil, fmt.Errorf("error preparing query AddMatchStreamer: %w", err)
@@ -57,8 +57,8 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.decreaseMatchTeamConfirmedParticipantsStmt, err = db.PrepareContext(ctx, decreaseMatchTeamConfirmedParticipants); err != nil {
 		return nil, fmt.Errorf("error preparing query DecreaseMatchTeamConfirmedParticipants: %w", err)
 	}
-	if q.deleteAllMatchModeratorRolesStmt, err = db.PrepareContext(ctx, deleteAllMatchModeratorRoles); err != nil {
-		return nil, fmt.Errorf("error preparing query DeleteAllMatchModeratorRoles: %w", err)
+	if q.deleteAllMatchModeratorsStmt, err = db.PrepareContext(ctx, deleteAllMatchModerators); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteAllMatchModerators: %w", err)
 	}
 	if q.deleteAllMatchStreamersStmt, err = db.PrepareContext(ctx, deleteAllMatchStreamers); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteAllMatchStreamers: %w", err)
@@ -75,11 +75,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteMatchStmt, err = db.PrepareContext(ctx, deleteMatch); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteMatch: %w", err)
 	}
-	if q.deleteMatchModeratorRoleStmt, err = db.PrepareContext(ctx, deleteMatchModeratorRole); err != nil {
-		return nil, fmt.Errorf("error preparing query DeleteMatchModeratorRole: %w", err)
+	if q.deleteMatchModeratorStmt, err = db.PrepareContext(ctx, deleteMatchModerator); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteMatchModerator: %w", err)
 	}
-	if q.deleteMatchModeratorRolesStmt, err = db.PrepareContext(ctx, deleteMatchModeratorRoles); err != nil {
-		return nil, fmt.Errorf("error preparing query DeleteMatchModeratorRoles: %w", err)
+	if q.deleteMatchModeratorsStmt, err = db.PrepareContext(ctx, deleteMatchModerators); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteMatchModerators: %w", err)
 	}
 	if q.deleteMatchStreamerStmt, err = db.PrepareContext(ctx, deleteMatchStreamer); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteMatchStreamer: %w", err)
@@ -135,8 +135,8 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.listGuildUserAccessStmt, err = db.PrepareContext(ctx, listGuildUserAccess); err != nil {
 		return nil, fmt.Errorf("error preparing query ListGuildUserAccess: %w", err)
 	}
-	if q.listMatchModeratorRolesStmt, err = db.PrepareContext(ctx, listMatchModeratorRoles); err != nil {
-		return nil, fmt.Errorf("error preparing query ListMatchModeratorRoles: %w", err)
+	if q.listMatchModeratorsStmt, err = db.PrepareContext(ctx, listMatchModerators); err != nil {
+		return nil, fmt.Errorf("error preparing query ListMatchModerators: %w", err)
 	}
 	if q.listMatchStreamersStmt, err = db.PrepareContext(ctx, listMatchStreamers); err != nil {
 		return nil, fmt.Errorf("error preparing query ListMatchStreamers: %w", err)
@@ -144,8 +144,20 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.listMatchTeamsStmt, err = db.PrepareContext(ctx, listMatchTeams); err != nil {
 		return nil, fmt.Errorf("error preparing query ListMatchTeams: %w", err)
 	}
+	if q.nextAccessibleChannelStmt, err = db.PrepareContext(ctx, nextAccessibleChannel); err != nil {
+		return nil, fmt.Errorf("error preparing query NextAccessibleChannel: %w", err)
+	}
 	if q.nextMatchCounterStmt, err = db.PrepareContext(ctx, nextMatchCounter); err != nil {
 		return nil, fmt.Errorf("error preparing query NextMatchCounter: %w", err)
+	}
+	if q.nextMatchReminderStmt, err = db.PrepareContext(ctx, nextMatchReminder); err != nil {
+		return nil, fmt.Errorf("error preparing query NextMatchReminder: %w", err)
+	}
+	if q.nextParticipationConfirmationDeadlineStmt, err = db.PrepareContext(ctx, nextParticipationConfirmationDeadline); err != nil {
+		return nil, fmt.Errorf("error preparing query NextParticipationConfirmationDeadline: %w", err)
+	}
+	if q.nextScheduledMatchStmt, err = db.PrepareContext(ctx, nextScheduledMatch); err != nil {
+		return nil, fmt.Errorf("error preparing query NextScheduledMatch: %w", err)
 	}
 	if q.removeGuildRoleAccessStmt, err = db.PrepareContext(ctx, removeGuildRoleAccess); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveGuildRoleAccess: %w", err)
@@ -156,11 +168,20 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.rescheduleMatchStmt, err = db.PrepareContext(ctx, rescheduleMatch); err != nil {
 		return nil, fmt.Errorf("error preparing query RescheduleMatch: %w", err)
 	}
+	if q.resetMatchReminderCountStmt, err = db.PrepareContext(ctx, resetMatchReminderCount); err != nil {
+		return nil, fmt.Errorf("error preparing query ResetMatchReminderCount: %w", err)
+	}
 	if q.updateCategoryIdStmt, err = db.PrepareContext(ctx, updateCategoryId); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateCategoryId: %w", err)
 	}
 	if q.updateGuildConfigStmt, err = db.PrepareContext(ctx, updateGuildConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateGuildConfig: %w", err)
+	}
+	if q.updateMatchChannelAccessibilityStmt, err = db.PrepareContext(ctx, updateMatchChannelAccessibility); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateMatchChannelAccessibility: %w", err)
+	}
+	if q.updateMatchReminderCountStmt, err = db.PrepareContext(ctx, updateMatchReminderCount); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateMatchReminderCount: %w", err)
 	}
 	return &q, nil
 }
@@ -197,9 +218,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing addMatchStmt: %w", cerr)
 		}
 	}
-	if q.addMatchModeratorRoleStmt != nil {
-		if cerr := q.addMatchModeratorRoleStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing addMatchModeratorRoleStmt: %w", cerr)
+	if q.addMatchModeratorStmt != nil {
+		if cerr := q.addMatchModeratorStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addMatchModeratorStmt: %w", cerr)
 		}
 	}
 	if q.addMatchStreamerStmt != nil {
@@ -222,9 +243,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing decreaseMatchTeamConfirmedParticipantsStmt: %w", cerr)
 		}
 	}
-	if q.deleteAllMatchModeratorRolesStmt != nil {
-		if cerr := q.deleteAllMatchModeratorRolesStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing deleteAllMatchModeratorRolesStmt: %w", cerr)
+	if q.deleteAllMatchModeratorsStmt != nil {
+		if cerr := q.deleteAllMatchModeratorsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteAllMatchModeratorsStmt: %w", cerr)
 		}
 	}
 	if q.deleteAllMatchStreamersStmt != nil {
@@ -252,14 +273,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteMatchStmt: %w", cerr)
 		}
 	}
-	if q.deleteMatchModeratorRoleStmt != nil {
-		if cerr := q.deleteMatchModeratorRoleStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing deleteMatchModeratorRoleStmt: %w", cerr)
+	if q.deleteMatchModeratorStmt != nil {
+		if cerr := q.deleteMatchModeratorStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteMatchModeratorStmt: %w", cerr)
 		}
 	}
-	if q.deleteMatchModeratorRolesStmt != nil {
-		if cerr := q.deleteMatchModeratorRolesStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing deleteMatchModeratorRolesStmt: %w", cerr)
+	if q.deleteMatchModeratorsStmt != nil {
+		if cerr := q.deleteMatchModeratorsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteMatchModeratorsStmt: %w", cerr)
 		}
 	}
 	if q.deleteMatchStreamerStmt != nil {
@@ -352,9 +373,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing listGuildUserAccessStmt: %w", cerr)
 		}
 	}
-	if q.listMatchModeratorRolesStmt != nil {
-		if cerr := q.listMatchModeratorRolesStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing listMatchModeratorRolesStmt: %w", cerr)
+	if q.listMatchModeratorsStmt != nil {
+		if cerr := q.listMatchModeratorsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listMatchModeratorsStmt: %w", cerr)
 		}
 	}
 	if q.listMatchStreamersStmt != nil {
@@ -367,9 +388,29 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing listMatchTeamsStmt: %w", cerr)
 		}
 	}
+	if q.nextAccessibleChannelStmt != nil {
+		if cerr := q.nextAccessibleChannelStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextAccessibleChannelStmt: %w", cerr)
+		}
+	}
 	if q.nextMatchCounterStmt != nil {
 		if cerr := q.nextMatchCounterStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing nextMatchCounterStmt: %w", cerr)
+		}
+	}
+	if q.nextMatchReminderStmt != nil {
+		if cerr := q.nextMatchReminderStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextMatchReminderStmt: %w", cerr)
+		}
+	}
+	if q.nextParticipationConfirmationDeadlineStmt != nil {
+		if cerr := q.nextParticipationConfirmationDeadlineStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextParticipationConfirmationDeadlineStmt: %w", cerr)
+		}
+	}
+	if q.nextScheduledMatchStmt != nil {
+		if cerr := q.nextScheduledMatchStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextScheduledMatchStmt: %w", cerr)
 		}
 	}
 	if q.removeGuildRoleAccessStmt != nil {
@@ -387,6 +428,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing rescheduleMatchStmt: %w", cerr)
 		}
 	}
+	if q.resetMatchReminderCountStmt != nil {
+		if cerr := q.resetMatchReminderCountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing resetMatchReminderCountStmt: %w", cerr)
+		}
+	}
 	if q.updateCategoryIdStmt != nil {
 		if cerr := q.updateCategoryIdStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateCategoryIdStmt: %w", cerr)
@@ -395,6 +441,16 @@ func (q *Queries) Close() error {
 	if q.updateGuildConfigStmt != nil {
 		if cerr := q.updateGuildConfigStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateGuildConfigStmt: %w", cerr)
+		}
+	}
+	if q.updateMatchChannelAccessibilityStmt != nil {
+		if cerr := q.updateMatchChannelAccessibilityStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateMatchChannelAccessibilityStmt: %w", cerr)
+		}
+	}
+	if q.updateMatchReminderCountStmt != nil {
+		if cerr := q.updateMatchReminderCountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateMatchReminderCountStmt: %w", cerr)
 		}
 	}
 	return err
@@ -442,19 +498,19 @@ type Queries struct {
 	addGuildUserAccessStmt                     *sql.Stmt
 	addGuildUserWriteAccessStmt                *sql.Stmt
 	addMatchStmt                               *sql.Stmt
-	addMatchModeratorRoleStmt                  *sql.Stmt
+	addMatchModeratorStmt                      *sql.Stmt
 	addMatchStreamerStmt                       *sql.Stmt
 	addMatchTeamStmt                           *sql.Stmt
 	addMatchTeamResultsStmt                    *sql.Stmt
 	decreaseMatchTeamConfirmedParticipantsStmt *sql.Stmt
-	deleteAllMatchModeratorRolesStmt           *sql.Stmt
+	deleteAllMatchModeratorsStmt               *sql.Stmt
 	deleteAllMatchStreamersStmt                *sql.Stmt
 	deleteAllMatchTeamsStmt                    *sql.Stmt
 	deleteGuildConfigStmt                      *sql.Stmt
 	deleteGuildMatchesStmt                     *sql.Stmt
 	deleteMatchStmt                            *sql.Stmt
-	deleteMatchModeratorRoleStmt               *sql.Stmt
-	deleteMatchModeratorRolesStmt              *sql.Stmt
+	deleteMatchModeratorStmt                   *sql.Stmt
+	deleteMatchModeratorsStmt                  *sql.Stmt
 	deleteMatchStreamerStmt                    *sql.Stmt
 	deleteMatchStreamersStmt                   *sql.Stmt
 	deleteMatchTeamStmt                        *sql.Stmt
@@ -473,15 +529,22 @@ type Queries struct {
 	listGuildMatchesStmt                       *sql.Stmt
 	listGuildRoleAccessStmt                    *sql.Stmt
 	listGuildUserAccessStmt                    *sql.Stmt
-	listMatchModeratorRolesStmt                *sql.Stmt
+	listMatchModeratorsStmt                    *sql.Stmt
 	listMatchStreamersStmt                     *sql.Stmt
 	listMatchTeamsStmt                         *sql.Stmt
+	nextAccessibleChannelStmt                  *sql.Stmt
 	nextMatchCounterStmt                       *sql.Stmt
+	nextMatchReminderStmt                      *sql.Stmt
+	nextParticipationConfirmationDeadlineStmt  *sql.Stmt
+	nextScheduledMatchStmt                     *sql.Stmt
 	removeGuildRoleAccessStmt                  *sql.Stmt
 	removeGuildUserAccessStmt                  *sql.Stmt
 	rescheduleMatchStmt                        *sql.Stmt
+	resetMatchReminderCountStmt                *sql.Stmt
 	updateCategoryIdStmt                       *sql.Stmt
 	updateGuildConfigStmt                      *sql.Stmt
+	updateMatchChannelAccessibilityStmt        *sql.Stmt
+	updateMatchReminderCountStmt               *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
@@ -494,19 +557,19 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addGuildUserAccessStmt:      q.addGuildUserAccessStmt,
 		addGuildUserWriteAccessStmt: q.addGuildUserWriteAccessStmt,
 		addMatchStmt:                q.addMatchStmt,
-		addMatchModeratorRoleStmt:   q.addMatchModeratorRoleStmt,
+		addMatchModeratorStmt:       q.addMatchModeratorStmt,
 		addMatchStreamerStmt:        q.addMatchStreamerStmt,
 		addMatchTeamStmt:            q.addMatchTeamStmt,
 		addMatchTeamResultsStmt:     q.addMatchTeamResultsStmt,
 		decreaseMatchTeamConfirmedParticipantsStmt: q.decreaseMatchTeamConfirmedParticipantsStmt,
-		deleteAllMatchModeratorRolesStmt:           q.deleteAllMatchModeratorRolesStmt,
+		deleteAllMatchModeratorsStmt:               q.deleteAllMatchModeratorsStmt,
 		deleteAllMatchStreamersStmt:                q.deleteAllMatchStreamersStmt,
 		deleteAllMatchTeamsStmt:                    q.deleteAllMatchTeamsStmt,
 		deleteGuildConfigStmt:                      q.deleteGuildConfigStmt,
 		deleteGuildMatchesStmt:                     q.deleteGuildMatchesStmt,
 		deleteMatchStmt:                            q.deleteMatchStmt,
-		deleteMatchModeratorRoleStmt:               q.deleteMatchModeratorRoleStmt,
-		deleteMatchModeratorRolesStmt:              q.deleteMatchModeratorRolesStmt,
+		deleteMatchModeratorStmt:                   q.deleteMatchModeratorStmt,
+		deleteMatchModeratorsStmt:                  q.deleteMatchModeratorsStmt,
 		deleteMatchStreamerStmt:                    q.deleteMatchStreamerStmt,
 		deleteMatchStreamersStmt:                   q.deleteMatchStreamersStmt,
 		deleteMatchTeamStmt:                        q.deleteMatchTeamStmt,
@@ -525,14 +588,21 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		listGuildMatchesStmt:                       q.listGuildMatchesStmt,
 		listGuildRoleAccessStmt:                    q.listGuildRoleAccessStmt,
 		listGuildUserAccessStmt:                    q.listGuildUserAccessStmt,
-		listMatchModeratorRolesStmt:                q.listMatchModeratorRolesStmt,
+		listMatchModeratorsStmt:                    q.listMatchModeratorsStmt,
 		listMatchStreamersStmt:                     q.listMatchStreamersStmt,
 		listMatchTeamsStmt:                         q.listMatchTeamsStmt,
+		nextAccessibleChannelStmt:                  q.nextAccessibleChannelStmt,
 		nextMatchCounterStmt:                       q.nextMatchCounterStmt,
+		nextMatchReminderStmt:                      q.nextMatchReminderStmt,
+		nextParticipationConfirmationDeadlineStmt:  q.nextParticipationConfirmationDeadlineStmt,
+		nextScheduledMatchStmt:                     q.nextScheduledMatchStmt,
 		removeGuildRoleAccessStmt:                  q.removeGuildRoleAccessStmt,
 		removeGuildUserAccessStmt:                  q.removeGuildUserAccessStmt,
 		rescheduleMatchStmt:                        q.rescheduleMatchStmt,
+		resetMatchReminderCountStmt:                q.resetMatchReminderCountStmt,
 		updateCategoryIdStmt:                       q.updateCategoryIdStmt,
 		updateGuildConfigStmt:                      q.updateGuildConfigStmt,
+		updateMatchChannelAccessibilityStmt:        q.updateMatchChannelAccessibilityStmt,
+		updateMatchReminderCountStmt:               q.updateMatchReminderCountStmt,
 	}
 }

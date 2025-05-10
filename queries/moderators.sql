@@ -1,32 +1,32 @@
 
--- name: AddMatchModeratorRole :exec
-INSERT INTO moderator_roles (
+-- name: AddMatchModerator :exec
+INSERT INTO moderators (
     channel_id,
-    role_id
+    user_id
 ) VALUES (
     :channel_id,
-    :role_id
+    :user_id
 );
 
--- name: DeleteMatchModeratorRole :exec
-DELETE FROM moderator_roles
+-- name: DeleteMatchModerator :exec
+DELETE FROM moderators
 WHERE channel_id = :channel_id
-AND role_id = :role_id;
+AND user_id = :user_id;
 
--- name: DeleteMatchModeratorRoles :exec
-DELETE FROM moderator_roles
+-- name: DeleteMatchModerators :exec
+DELETE FROM moderators
 WHERE channel_id = :channel_id
-AND role_id IN (sqlc.slice(':role_ids'));
+AND user_id IN (sqlc.slice(':user_ids'));
 
--- name: DeleteAllMatchModeratorRoles :exec
-DELETE FROM moderator_roles
+-- name: DeleteAllMatchModerators :exec
+DELETE FROM moderators
 WHERE channel_id = :channel_id;
 
--- name: ListMatchModeratorRoles :many
+-- name: ListMatchModerators :many
 SELECT
     channel_id,
-    role_id
-FROM moderator_roles
+    user_id
+FROM moderators
 WHERE channel_id = :channel_id;
 
 

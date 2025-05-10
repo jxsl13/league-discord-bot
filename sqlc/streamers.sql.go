@@ -13,7 +13,7 @@ import (
 const addMatchStreamer = `-- name: AddMatchStreamer :exec
 INSERT INTO streamers (
     channel_id,
-    name,
+    user_id,
     url
 ) VALUES (
     ?1,
@@ -23,13 +23,13 @@ INSERT INTO streamers (
 `
 
 type AddMatchStreamerParams struct {
-	ChannelID int64  `db:"channel_id"`
-	Name      string `db:"name"`
+	ChannelID string `db:"channel_id"`
+	UserID    string `db:"user_id"`
 	Url       string `db:"url"`
 }
 
 func (q *Queries) AddMatchStreamer(ctx context.Context, arg AddMatchStreamerParams) error {
-	_, err := q.exec(ctx, q.addMatchStreamerStmt, addMatchStreamer, arg.ChannelID, arg.Name, arg.Url)
+	_, err := q.exec(ctx, q.addMatchStreamerStmt, addMatchStreamer, arg.ChannelID, arg.UserID, arg.Url)
 	return err
 }
 
@@ -38,7 +38,7 @@ DELETE FROM streamers
 WHERE channel_id = ?1
 `
 
-func (q *Queries) DeleteAllMatchStreamers(ctx context.Context, channelID int64) error {
+func (q *Queries) DeleteAllMatchStreamers(ctx context.Context, channelID string) error {
 	_, err := q.exec(ctx, q.deleteAllMatchStreamersStmt, deleteAllMatchStreamers, channelID)
 	return err
 }
@@ -46,41 +46,41 @@ func (q *Queries) DeleteAllMatchStreamers(ctx context.Context, channelID int64) 
 const deleteMatchStreamer = `-- name: DeleteMatchStreamer :exec
 DELETE FROM streamers
 WHERE channel_id = ?1
-AND name = ?2
+AND user_id = ?2
 `
 
 type DeleteMatchStreamerParams struct {
-	ChannelID int64  `db:"channel_id"`
-	Name      string `db:"name"`
+	ChannelID string `db:"channel_id"`
+	UserID    string `db:"user_id"`
 }
 
 func (q *Queries) DeleteMatchStreamer(ctx context.Context, arg DeleteMatchStreamerParams) error {
-	_, err := q.exec(ctx, q.deleteMatchStreamerStmt, deleteMatchStreamer, arg.ChannelID, arg.Name)
+	_, err := q.exec(ctx, q.deleteMatchStreamerStmt, deleteMatchStreamer, arg.ChannelID, arg.UserID)
 	return err
 }
 
 const deleteMatchStreamers = `-- name: DeleteMatchStreamers :exec
 DELETE FROM streamers
 WHERE channel_id = ?1
-AND name IN (/*SLICE::names*/?)
+AND user_id IN (/*SLICE::user_ids*/?)
 `
 
 type DeleteMatchStreamersParams struct {
-	ChannelID int64    `db:"channel_id"`
-	Names     []string `db:":names"`
+	ChannelID string   `db:"channel_id"`
+	UserIds   []string `db:":user_ids"`
 }
 
 func (q *Queries) DeleteMatchStreamers(ctx context.Context, arg DeleteMatchStreamersParams) error {
 	query := deleteMatchStreamers
 	var queryParams []interface{}
 	queryParams = append(queryParams, arg.ChannelID)
-	if len(arg.Names) > 0 {
-		for _, v := range arg.Names {
+	if len(arg.UserIds) > 0 {
+		for _, v := range arg.UserIds {
 			queryParams = append(queryParams, v)
 		}
-		query = strings.Replace(query, "/*SLICE::names*/?", strings.Repeat(",?", len(arg.Names))[1:], 1)
+		query = strings.Replace(query, "/*SLICE::user_ids*/?", strings.Repeat(",?", len(arg.UserIds))[1:], 1)
 	} else {
-		query = strings.Replace(query, "/*SLICE::names*/?", "NULL", 1)
+		query = strings.Replace(query, "/*SLICE::user_ids*/?", "NULL", 1)
 	}
 	_, err := q.exec(ctx, nil, query, queryParams...)
 	return err
@@ -89,13 +89,13 @@ func (q *Queries) DeleteMatchStreamers(ctx context.Context, arg DeleteMatchStrea
 const listMatchStreamers = `-- name: ListMatchStreamers :many
 SELECT
     channel_id,
-    name,
+    user_id,
     url
 FROM streamers
 WHERE channel_id = ?1
 `
 
-func (q *Queries) ListMatchStreamers(ctx context.Context, channelID int64) ([]Streamer, error) {
+func (q *Queries) ListMatchStreamers(ctx context.Context, channelID string) ([]Streamer, error) {
 	rows, err := q.query(ctx, q.listMatchStreamersStmt, listMatchStreamers, channelID)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func (q *Queries) ListMatchStreamers(ctx context.Context, channelID int64) ([]St
 	items := []Streamer{}
 	for rows.Next() {
 		var i Streamer
-		if err := rows.Scan(&i.ChannelID, &i.Name, &i.Url); err != nil {
+		if err := rows.Scan(&i.ChannelID, &i.UserID, &i.Url); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

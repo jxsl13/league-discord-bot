@@ -14,9 +14,11 @@ INSERT INTO matches (
     guild_id,
     channel_id,
     channel_accessible_at,
+    channel_accessible,
     channel_delete_at,
     message_id,
     scheduled_at,
+    reminder_count,
     required_participants_per_team,
     participation_confirmation_until,
     created_at,
@@ -35,7 +37,9 @@ INSERT INTO matches (
     ?9,
     ?10,
     ?11,
-    ?12
+    ?12,
+    ?13,
+    ?14
 )
 `
 
@@ -43,9 +47,11 @@ type AddMatchParams struct {
 	GuildID                        string `db:"guild_id"`
 	ChannelID                      string `db:"channel_id"`
 	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
+	ChannelAccessible              int64  `db:"channel_accessible"`
 	ChannelDeleteAt                int64  `db:"channel_delete_at"`
 	MessageID                      string `db:"message_id"`
 	ScheduledAt                    int64  `db:"scheduled_at"`
+	ReminderCount                  int64  `db:"reminder_count"`
 	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
 	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
 	CreatedAt                      int64  `db:"created_at"`
@@ -59,9 +65,11 @@ func (q *Queries) AddMatch(ctx context.Context, arg AddMatchParams) error {
 		arg.GuildID,
 		arg.ChannelID,
 		arg.ChannelAccessibleAt,
+		arg.ChannelAccessible,
 		arg.ChannelDeleteAt,
 		arg.MessageID,
 		arg.ScheduledAt,
+		arg.ReminderCount,
 		arg.RequiredParticipantsPerTeam,
 		arg.ParticipationConfirmationUntil,
 		arg.CreatedAt,
@@ -94,9 +102,11 @@ const getMatch = `-- name: GetMatch :one
 SELECT
     channel_id,
     channel_accessible_at,
+    channel_accessible,
     channel_delete_at,
     message_id,
     scheduled_at,
+    reminder_count,
     required_participants_per_team,
     participation_confirmation_until,
     created_at,
@@ -110,9 +120,11 @@ WHERE channel_id = ?1
 type GetMatchRow struct {
 	ChannelID                      string `db:"channel_id"`
 	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
+	ChannelAccessible              int64  `db:"channel_accessible"`
 	ChannelDeleteAt                int64  `db:"channel_delete_at"`
 	MessageID                      string `db:"message_id"`
 	ScheduledAt                    int64  `db:"scheduled_at"`
+	ReminderCount                  int64  `db:"reminder_count"`
 	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
 	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
 	CreatedAt                      int64  `db:"created_at"`
@@ -127,9 +139,11 @@ func (q *Queries) GetMatch(ctx context.Context, channelID string) (GetMatchRow, 
 	err := row.Scan(
 		&i.ChannelID,
 		&i.ChannelAccessibleAt,
+		&i.ChannelAccessible,
 		&i.ChannelDeleteAt,
 		&i.MessageID,
 		&i.ScheduledAt,
+		&i.ReminderCount,
 		&i.RequiredParticipantsPerTeam,
 		&i.ParticipationConfirmationUntil,
 		&i.CreatedAt,
@@ -145,9 +159,11 @@ SELECT
     guild_id,
     channel_id,
     channel_accessible_at,
+    channel_accessible,
     channel_delete_at,
     message_id,
     scheduled_at,
+    reminder_count,
     required_participants_per_team,
     participation_confirmation_until,
     created_at,
@@ -159,22 +175,41 @@ WHERE guild_id = ?1
 ORDER BY scheduled_at ASC
 `
 
-func (q *Queries) ListGuildMatches(ctx context.Context, guildID string) ([]Match, error) {
+type ListGuildMatchesRow struct {
+	GuildID                        string `db:"guild_id"`
+	ChannelID                      string `db:"channel_id"`
+	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
+	ChannelAccessible              int64  `db:"channel_accessible"`
+	ChannelDeleteAt                int64  `db:"channel_delete_at"`
+	MessageID                      string `db:"message_id"`
+	ScheduledAt                    int64  `db:"scheduled_at"`
+	ReminderCount                  int64  `db:"reminder_count"`
+	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
+	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
+	CreatedAt                      int64  `db:"created_at"`
+	CreatedBy                      string `db:"created_by"`
+	UpdatedAt                      int64  `db:"updated_at"`
+	UpdatedBy                      string `db:"updated_by"`
+}
+
+func (q *Queries) ListGuildMatches(ctx context.Context, guildID string) ([]ListGuildMatchesRow, error) {
 	rows, err := q.query(ctx, q.listGuildMatchesStmt, listGuildMatches, guildID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Match{}
+	items := []ListGuildMatchesRow{}
 	for rows.Next() {
-		var i Match
+		var i ListGuildMatchesRow
 		if err := rows.Scan(
 			&i.GuildID,
 			&i.ChannelID,
 			&i.ChannelAccessibleAt,
+			&i.ChannelAccessible,
 			&i.ChannelDeleteAt,
 			&i.MessageID,
 			&i.ScheduledAt,
+			&i.ReminderCount,
 			&i.RequiredParticipantsPerTeam,
 			&i.ParticipationConfirmationUntil,
 			&i.CreatedAt,
@@ -195,23 +230,260 @@ func (q *Queries) ListGuildMatches(ctx context.Context, guildID string) ([]Match
 	return items, nil
 }
 
+const nextAccessibleChannel = `-- name: NextAccessibleChannel :one
+SELECT
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    scheduled_at,
+    reminder_count,
+    required_participants_per_team,
+    participation_confirmation_until,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+WHERE matches.channel_accessible = 0
+ORDER BY channel_accessible_at ASC
+LIMIT 1
+`
+
+type NextAccessibleChannelRow struct {
+	ChannelID                      string `db:"channel_id"`
+	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
+	ChannelAccessible              int64  `db:"channel_accessible"`
+	ChannelDeleteAt                int64  `db:"channel_delete_at"`
+	MessageID                      string `db:"message_id"`
+	ScheduledAt                    int64  `db:"scheduled_at"`
+	ReminderCount                  int64  `db:"reminder_count"`
+	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
+	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
+	CreatedAt                      int64  `db:"created_at"`
+	CreatedBy                      string `db:"created_by"`
+	UpdatedAt                      int64  `db:"updated_at"`
+	UpdatedBy                      string `db:"updated_by"`
+}
+
+func (q *Queries) NextAccessibleChannel(ctx context.Context) (NextAccessibleChannelRow, error) {
+	row := q.queryRow(ctx, q.nextAccessibleChannelStmt, nextAccessibleChannel)
+	var i NextAccessibleChannelRow
+	err := row.Scan(
+		&i.ChannelID,
+		&i.ChannelAccessibleAt,
+		&i.ChannelAccessible,
+		&i.ChannelDeleteAt,
+		&i.MessageID,
+		&i.ScheduledAt,
+		&i.ReminderCount,
+		&i.RequiredParticipantsPerTeam,
+		&i.ParticipationConfirmationUntil,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
+const nextMatchReminder = `-- name: NextMatchReminder :one
+SELECT
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    scheduled_at,
+    reminder_count,
+    required_participants_per_team,
+    participation_confirmation_until,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+WHERE matches.scheduled_at > unixepoch('now')
+AND matches.reminder_count <= ?1
+ORDER BY scheduled_at ASC
+LIMIT 1
+`
+
+type NextMatchReminderRow struct {
+	ChannelID                      string `db:"channel_id"`
+	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
+	ChannelAccessible              int64  `db:"channel_accessible"`
+	ChannelDeleteAt                int64  `db:"channel_delete_at"`
+	MessageID                      string `db:"message_id"`
+	ScheduledAt                    int64  `db:"scheduled_at"`
+	ReminderCount                  int64  `db:"reminder_count"`
+	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
+	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
+	CreatedAt                      int64  `db:"created_at"`
+	CreatedBy                      string `db:"created_by"`
+	UpdatedAt                      int64  `db:"updated_at"`
+	UpdatedBy                      string `db:"updated_by"`
+}
+
+func (q *Queries) NextMatchReminder(ctx context.Context, maxReminderIndex int64) (NextMatchReminderRow, error) {
+	row := q.queryRow(ctx, q.nextMatchReminderStmt, nextMatchReminder, maxReminderIndex)
+	var i NextMatchReminderRow
+	err := row.Scan(
+		&i.ChannelID,
+		&i.ChannelAccessibleAt,
+		&i.ChannelAccessible,
+		&i.ChannelDeleteAt,
+		&i.MessageID,
+		&i.ScheduledAt,
+		&i.ReminderCount,
+		&i.RequiredParticipantsPerTeam,
+		&i.ParticipationConfirmationUntil,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
+const nextParticipationConfirmationDeadline = `-- name: NextParticipationConfirmationDeadline :one
+SELECT
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    scheduled_at,
+    reminder_count,
+    required_participants_per_team,
+    participation_confirmation_until,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+WHERE matches.participation_confirmation_until > unixepoch('now')
+ORDER BY participation_confirmation_until ASC
+LIMIT 1
+`
+
+type NextParticipationConfirmationDeadlineRow struct {
+	ChannelID                      string `db:"channel_id"`
+	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
+	ChannelAccessible              int64  `db:"channel_accessible"`
+	ChannelDeleteAt                int64  `db:"channel_delete_at"`
+	MessageID                      string `db:"message_id"`
+	ScheduledAt                    int64  `db:"scheduled_at"`
+	ReminderCount                  int64  `db:"reminder_count"`
+	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
+	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
+	CreatedAt                      int64  `db:"created_at"`
+	CreatedBy                      string `db:"created_by"`
+	UpdatedAt                      int64  `db:"updated_at"`
+	UpdatedBy                      string `db:"updated_by"`
+}
+
+func (q *Queries) NextParticipationConfirmationDeadline(ctx context.Context) (NextParticipationConfirmationDeadlineRow, error) {
+	row := q.queryRow(ctx, q.nextParticipationConfirmationDeadlineStmt, nextParticipationConfirmationDeadline)
+	var i NextParticipationConfirmationDeadlineRow
+	err := row.Scan(
+		&i.ChannelID,
+		&i.ChannelAccessibleAt,
+		&i.ChannelAccessible,
+		&i.ChannelDeleteAt,
+		&i.MessageID,
+		&i.ScheduledAt,
+		&i.ReminderCount,
+		&i.RequiredParticipantsPerTeam,
+		&i.ParticipationConfirmationUntil,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
+const nextScheduledMatch = `-- name: NextScheduledMatch :one
+SELECT
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    scheduled_at,
+    reminder_count,
+    required_participants_per_team,
+    participation_confirmation_until,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+WHERE matches.scheduled_at > unixepoch('now')
+ORDER BY scheduled_at ASC
+LIMIT 1
+`
+
+type NextScheduledMatchRow struct {
+	ChannelID                      string `db:"channel_id"`
+	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
+	ChannelAccessible              int64  `db:"channel_accessible"`
+	ChannelDeleteAt                int64  `db:"channel_delete_at"`
+	MessageID                      string `db:"message_id"`
+	ScheduledAt                    int64  `db:"scheduled_at"`
+	ReminderCount                  int64  `db:"reminder_count"`
+	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
+	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
+	CreatedAt                      int64  `db:"created_at"`
+	CreatedBy                      string `db:"created_by"`
+	UpdatedAt                      int64  `db:"updated_at"`
+	UpdatedBy                      string `db:"updated_by"`
+}
+
+func (q *Queries) NextScheduledMatch(ctx context.Context) (NextScheduledMatchRow, error) {
+	row := q.queryRow(ctx, q.nextScheduledMatchStmt, nextScheduledMatch)
+	var i NextScheduledMatchRow
+	err := row.Scan(
+		&i.ChannelID,
+		&i.ChannelAccessibleAt,
+		&i.ChannelAccessible,
+		&i.ChannelDeleteAt,
+		&i.MessageID,
+		&i.ScheduledAt,
+		&i.ReminderCount,
+		&i.RequiredParticipantsPerTeam,
+		&i.ParticipationConfirmationUntil,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
 const rescheduleMatch = `-- name: RescheduleMatch :exec
 UPDATE matches
 SET
     scheduled_at = ?1,
-    required_participants_per_team = ?2,
-    participation_confirmation_until = ?3,
-    channel_accessible_at = ?4,
-    channel_delete_at = ?5,
-    updated_by = ?6
-WHERE channel_id = ?7
+    reminder_count = ?2,
+    required_participants_per_team = ?3,
+    participation_confirmation_until = ?4,
+    channel_accessible_at = ?5,
+    channel_accessible = ?6,
+    channel_delete_at = ?7,
+    updated_by = ?8
+WHERE channel_id = ?9
 `
 
 type RescheduleMatchParams struct {
 	ScheduledAt                    int64  `db:"scheduled_at"`
+	ReminderCount                  int64  `db:"reminder_count"`
 	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
 	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
 	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
+	ChannelAccessible              int64  `db:"channel_accessible"`
 	ChannelDeleteAt                int64  `db:"channel_delete_at"`
 	UpdatedBy                      string `db:"updated_by"`
 	ChannelID                      string `db:"channel_id"`
@@ -220,12 +492,60 @@ type RescheduleMatchParams struct {
 func (q *Queries) RescheduleMatch(ctx context.Context, arg RescheduleMatchParams) error {
 	_, err := q.exec(ctx, q.rescheduleMatchStmt, rescheduleMatch,
 		arg.ScheduledAt,
+		arg.ReminderCount,
 		arg.RequiredParticipantsPerTeam,
 		arg.ParticipationConfirmationUntil,
 		arg.ChannelAccessibleAt,
+		arg.ChannelAccessible,
 		arg.ChannelDeleteAt,
 		arg.UpdatedBy,
 		arg.ChannelID,
 	)
+	return err
+}
+
+const resetMatchReminderCount = `-- name: ResetMatchReminderCount :exec
+UPDATE matches
+SET
+    reminder_count = 0
+WHERE channel_id = ?1
+`
+
+func (q *Queries) ResetMatchReminderCount(ctx context.Context, channelID string) error {
+	_, err := q.exec(ctx, q.resetMatchReminderCountStmt, resetMatchReminderCount, channelID)
+	return err
+}
+
+const updateMatchChannelAccessibility = `-- name: UpdateMatchChannelAccessibility :exec
+UPDATE matches
+SET
+    channel_accessible = ?1
+WHERE channel_id = ?2
+`
+
+type UpdateMatchChannelAccessibilityParams struct {
+	ChannelAccessible int64  `db:"channel_accessible"`
+	ChannelID         string `db:"channel_id"`
+}
+
+func (q *Queries) UpdateMatchChannelAccessibility(ctx context.Context, arg UpdateMatchChannelAccessibilityParams) error {
+	_, err := q.exec(ctx, q.updateMatchChannelAccessibilityStmt, updateMatchChannelAccessibility, arg.ChannelAccessible, arg.ChannelID)
+	return err
+}
+
+const updateMatchReminderCount = `-- name: UpdateMatchReminderCount :exec
+UPDATE matches
+SET
+    reminder_count = ?1
+WHERE channel_id = ?2
+`
+
+type UpdateMatchReminderCountParams struct {
+	ReminderCount int64  `db:"reminder_count"`
+	ChannelID     string `db:"channel_id"`
+}
+
+func (q *Queries) UpdateMatchReminderCount(ctx context.Context, arg UpdateMatchReminderCountParams) error {
+	_, err := q.exec(ctx, q.updateMatchReminderCountStmt, updateMatchReminderCount, arg.ReminderCount, arg.ChannelID)
 	return err
 }

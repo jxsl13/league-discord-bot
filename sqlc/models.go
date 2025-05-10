@@ -19,10 +19,12 @@ type GuildConfig struct {
 type Match struct {
 	GuildID                        string `db:"guild_id"`
 	ChannelID                      string `db:"channel_id"`
+	ChannelAccessible              int64  `db:"channel_accessible"`
 	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
 	ChannelDeleteAt                int64  `db:"channel_delete_at"`
 	MessageID                      string `db:"message_id"`
 	ScheduledAt                    int64  `db:"scheduled_at"`
+	ReminderCount                  int64  `db:"reminder_count"`
 	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
 	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
 	CreatedAt                      int64  `db:"created_at"`
@@ -31,9 +33,9 @@ type Match struct {
 	UpdatedBy                      string `db:"updated_by"`
 }
 
-type ModeratorRole struct {
-	ChannelID int64  `db:"channel_id"`
-	RoleID    string `db:"role_id"`
+type Moderator struct {
+	ChannelID string `db:"channel_id"`
+	UserID    string `db:"user_id"`
 }
 
 type RoleAccess struct {
@@ -43,8 +45,8 @@ type RoleAccess struct {
 }
 
 type Streamer struct {
-	ChannelID int64  `db:"channel_id"`
-	Name      string `db:"name"`
+	ChannelID string `db:"channel_id"`
+	UserID    string `db:"user_id"`
 	Url       string `db:"url"`
 }
 

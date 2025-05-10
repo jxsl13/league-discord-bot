@@ -76,7 +76,7 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 	for _, m := range matches {
 		id, err := discordutils.ParseChannelID(m.ChannelID)
 		if err != nil {
-			log.Printf("error parsing channel id %s: %v", m.ChannelID, err)
+			log.Println(err)
 			continue
 		}
 		channelIDs = append(channelIDs, id)

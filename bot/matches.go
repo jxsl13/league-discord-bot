@@ -23,11 +23,11 @@ const (
 func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandData) *api.InteractionResponseData {
 
 	var (
-		guildID      = data.Event.GuildID
-		now          = time.Now()
-		nowUnixMilli = now.UnixMilli()
-		userID       = data.Event.SenderID()
-		userIDStr    = userID.String()
+		guildID   = data.Event.GuildID
+		now       = time.Now()
+		nowUnix   = now.Unix()
+		userID    = data.Event.SenderID()
+		userIDStr = userID.String()
 	)
 
 	q, err := b.Queries(b.ctx)
@@ -42,7 +42,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 		return errorResponse(err)
 	}
 
-	scheduledAt, err := options.Time("scheduled_at", data.Options) // TODO: change check to options.MinTime
+	scheduledAt, err := options.TimeInLocation("scheduled_at", "location", data.Options) // TODO: change check to options.MinTime
 	if err != nil {
 		return errorResponse(err)
 	}
@@ -62,6 +62,11 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 		return errorResponse(err)
 	}
 
+	moderatorID, err := options.UserID("moderator", data.Options)
+	if err != nil {
+		return errorResponse(err)
+	}
+
 	if team1 == team2 {
 		err = fmt.Errorf("invalid parameter 'team_1_role' and 'team_2_role': must be different")
 		return errorResponse(err)
@@ -70,6 +75,28 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 	err = b.checkRoleIDs(guildID, team1, team2)
 	if err != nil {
 		return errorResponse(err)
+	}
+
+	err = b.checkUserIDs(guildID, moderatorID)
+	if err != nil {
+		return errorResponse(err)
+	}
+
+	streamUrl, _, err := options.OptionalUrl("stream_url", data.Options)
+	if err != nil {
+		return errorResponse(err)
+	}
+
+	streamerID, okStreamer, err := options.OptionalUserID("streamer", data.Options)
+	if err != nil {
+		return errorResponse(err)
+	}
+
+	if okStreamer {
+		err = b.checkUserIDs(guildID, streamerID)
+		if err != nil {
+			return errorResponse(err)
+		}
 	}
 
 	cfg, err := q.GetGuildConfig(ctx, guildID.String())
@@ -126,7 +153,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 		}
 	}()
 
-	text := `%[1]d vs %[1]d match between %[2]s and %[3]s scheduled at %[4]s
+	text := `Match between %[2]s and %[3]s (%[1]don%[1]d) scheduled at %[4]s
 
 Please react with %[5]s to confirm your participation.
 	`
@@ -169,15 +196,15 @@ Please react with %[5]s to confirm your participation.
 	err = q.AddMatch(ctx, sqlc.AddMatchParams{
 		GuildID:                        guildID.String(),
 		ChannelID:                      channelIDStr,
-		ChannelAccessibleAt:            max(nowUnixMilli, scheduledAt.Add(-24*7*time.Hour).UnixMilli()),
-		ChannelDeleteAt:                max(nowUnixMilli, scheduledAt.Add(24*time.Hour).UnixMilli()),
+		ChannelAccessibleAt:            max(nowUnix, scheduledAt.Add(-24*7*time.Hour).Unix()),
+		ChannelDeleteAt:                max(nowUnix, scheduledAt.Add(24*time.Hour).Unix()),
 		MessageID:                      msg.ID.String(),
-		ScheduledAt:                    scheduledAt.UnixMilli(),
+		ScheduledAt:                    scheduledAt.Unix(),
 		RequiredParticipantsPerTeam:    participantsPerTeam,
-		ParticipationConfirmationUntil: max(nowUnixMilli, scheduledAt.Add(-24*time.Hour).UnixMilli()),
-		CreatedAt:                      nowUnixMilli,
+		ParticipationConfirmationUntil: max(nowUnix, scheduledAt.Add(-24*time.Hour).Unix()),
+		CreatedAt:                      nowUnix,
 		CreatedBy:                      userIDStr,
-		UpdatedAt:                      nowUnixMilli,
+		UpdatedAt:                      nowUnix,
 		UpdatedBy:                      userIDStr,
 	})
 	if err != nil {
@@ -185,6 +212,7 @@ Please react with %[5]s to confirm your participation.
 		return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))
 	}
 
+	// team1
 	err = q.AddMatchTeam(ctx, sqlc.AddMatchTeamParams{
 		ChannelID: channelIDStr,
 		RoleID:    team1.String(),
@@ -193,6 +221,7 @@ Please react with %[5]s to confirm your participation.
 		err = fmt.Errorf("error adding match team 1: %w", err)
 		return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))
 	}
+	// team 2
 	err = q.AddMatchTeam(ctx, sqlc.AddMatchTeamParams{
 		ChannelID: channelIDStr,
 		RoleID:    team2.String(),
@@ -200,6 +229,27 @@ Please react with %[5]s to confirm your participation.
 	if err != nil {
 		err = fmt.Errorf("error adding match team 2: %w", err)
 		return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))
+	}
+
+	err = q.AddMatchModerator(ctx, sqlc.AddMatchModeratorParams{
+		ChannelID: channelIDStr,
+		UserID:    moderatorID.String(),
+	})
+	if err != nil {
+		err = fmt.Errorf("error adding match moderator: %w", err)
+		return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))
+	}
+
+	if okStreamer {
+		err = q.AddMatchStreamer(ctx, sqlc.AddMatchStreamerParams{
+			ChannelID: channelIDStr,
+			UserID:    streamerID.String(),
+			Url:       streamUrl,
+		})
+		if err != nil {
+			err = fmt.Errorf("error adding match streamer: %w", err)
+			return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))
+		}
 	}
 
 	return &api.InteractionResponseData{
@@ -213,7 +263,6 @@ Please react with %[5]s to confirm your participation.
 		Flags:           discord.EphemeralMessage,
 		AllowedMentions: &api.AllowedMentions{ /* none */ },
 	}
-
 }
 
 func (b *Bot) commandListMatches(ctx context.Context, data cmdroute.CommandData) *api.InteractionResponseData {

@@ -10,97 +10,97 @@ import (
 	"strings"
 )
 
-const addMatchModeratorRole = `-- name: AddMatchModeratorRole :exec
-INSERT INTO moderator_roles (
+const addMatchModerator = `-- name: AddMatchModerator :exec
+INSERT INTO moderators (
     channel_id,
-    role_id
+    user_id
 ) VALUES (
     ?1,
     ?2
 )
 `
 
-type AddMatchModeratorRoleParams struct {
-	ChannelID int64  `db:"channel_id"`
-	RoleID    string `db:"role_id"`
+type AddMatchModeratorParams struct {
+	ChannelID string `db:"channel_id"`
+	UserID    string `db:"user_id"`
 }
 
-func (q *Queries) AddMatchModeratorRole(ctx context.Context, arg AddMatchModeratorRoleParams) error {
-	_, err := q.exec(ctx, q.addMatchModeratorRoleStmt, addMatchModeratorRole, arg.ChannelID, arg.RoleID)
+func (q *Queries) AddMatchModerator(ctx context.Context, arg AddMatchModeratorParams) error {
+	_, err := q.exec(ctx, q.addMatchModeratorStmt, addMatchModerator, arg.ChannelID, arg.UserID)
 	return err
 }
 
-const deleteAllMatchModeratorRoles = `-- name: DeleteAllMatchModeratorRoles :exec
-DELETE FROM moderator_roles
+const deleteAllMatchModerators = `-- name: DeleteAllMatchModerators :exec
+DELETE FROM moderators
 WHERE channel_id = ?1
 `
 
-func (q *Queries) DeleteAllMatchModeratorRoles(ctx context.Context, channelID int64) error {
-	_, err := q.exec(ctx, q.deleteAllMatchModeratorRolesStmt, deleteAllMatchModeratorRoles, channelID)
+func (q *Queries) DeleteAllMatchModerators(ctx context.Context, channelID string) error {
+	_, err := q.exec(ctx, q.deleteAllMatchModeratorsStmt, deleteAllMatchModerators, channelID)
 	return err
 }
 
-const deleteMatchModeratorRole = `-- name: DeleteMatchModeratorRole :exec
-DELETE FROM moderator_roles
+const deleteMatchModerator = `-- name: DeleteMatchModerator :exec
+DELETE FROM moderators
 WHERE channel_id = ?1
-AND role_id = ?2
+AND user_id = ?2
 `
 
-type DeleteMatchModeratorRoleParams struct {
-	ChannelID int64  `db:"channel_id"`
-	RoleID    string `db:"role_id"`
+type DeleteMatchModeratorParams struct {
+	ChannelID string `db:"channel_id"`
+	UserID    string `db:"user_id"`
 }
 
-func (q *Queries) DeleteMatchModeratorRole(ctx context.Context, arg DeleteMatchModeratorRoleParams) error {
-	_, err := q.exec(ctx, q.deleteMatchModeratorRoleStmt, deleteMatchModeratorRole, arg.ChannelID, arg.RoleID)
+func (q *Queries) DeleteMatchModerator(ctx context.Context, arg DeleteMatchModeratorParams) error {
+	_, err := q.exec(ctx, q.deleteMatchModeratorStmt, deleteMatchModerator, arg.ChannelID, arg.UserID)
 	return err
 }
 
-const deleteMatchModeratorRoles = `-- name: DeleteMatchModeratorRoles :exec
-DELETE FROM moderator_roles
+const deleteMatchModerators = `-- name: DeleteMatchModerators :exec
+DELETE FROM moderators
 WHERE channel_id = ?1
-AND role_id IN (/*SLICE::role_ids*/?)
+AND user_id IN (/*SLICE::user_ids*/?)
 `
 
-type DeleteMatchModeratorRolesParams struct {
-	ChannelID int64    `db:"channel_id"`
-	RoleIds   []string `db:":role_ids"`
+type DeleteMatchModeratorsParams struct {
+	ChannelID string   `db:"channel_id"`
+	UserIds   []string `db:":user_ids"`
 }
 
-func (q *Queries) DeleteMatchModeratorRoles(ctx context.Context, arg DeleteMatchModeratorRolesParams) error {
-	query := deleteMatchModeratorRoles
+func (q *Queries) DeleteMatchModerators(ctx context.Context, arg DeleteMatchModeratorsParams) error {
+	query := deleteMatchModerators
 	var queryParams []interface{}
 	queryParams = append(queryParams, arg.ChannelID)
-	if len(arg.RoleIds) > 0 {
-		for _, v := range arg.RoleIds {
+	if len(arg.UserIds) > 0 {
+		for _, v := range arg.UserIds {
 			queryParams = append(queryParams, v)
 		}
-		query = strings.Replace(query, "/*SLICE::role_ids*/?", strings.Repeat(",?", len(arg.RoleIds))[1:], 1)
+		query = strings.Replace(query, "/*SLICE::user_ids*/?", strings.Repeat(",?", len(arg.UserIds))[1:], 1)
 	} else {
-		query = strings.Replace(query, "/*SLICE::role_ids*/?", "NULL", 1)
+		query = strings.Replace(query, "/*SLICE::user_ids*/?", "NULL", 1)
 	}
 	_, err := q.exec(ctx, nil, query, queryParams...)
 	return err
 }
 
-const listMatchModeratorRoles = `-- name: ListMatchModeratorRoles :many
+const listMatchModerators = `-- name: ListMatchModerators :many
 SELECT
     channel_id,
-    role_id
-FROM moderator_roles
+    user_id
+FROM moderators
 WHERE channel_id = ?1
 `
 
-func (q *Queries) ListMatchModeratorRoles(ctx context.Context, channelID int64) ([]ModeratorRole, error) {
-	rows, err := q.query(ctx, q.listMatchModeratorRolesStmt, listMatchModeratorRoles, channelID)
+func (q *Queries) ListMatchModerators(ctx context.Context, channelID string) ([]Moderator, error) {
+	rows, err := q.query(ctx, q.listMatchModeratorsStmt, listMatchModerators, channelID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ModeratorRole{}
+	items := []Moderator{}
 	for rows.Next() {
-		var i ModeratorRole
-		if err := rows.Scan(&i.ChannelID, &i.RoleID); err != nil {
+		var i Moderator
+		if err := rows.Scan(&i.ChannelID, &i.UserID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

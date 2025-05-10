@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/jxs13/league-discord-bot/bot"
 	"github.com/jxs13/league-discord-bot/config"
 	"github.com/jxs13/league-discord-bot/migrations"
 	"github.com/jxsl13/cli-config-boilerplate/cliconfig"
 	"github.com/spf13/cobra"
-	_ "modernc.org/sqlite"
+	"modernc.org/sqlite"
 )
 
 func main() {
@@ -72,15 +73,27 @@ func (c *rootContext) PreRunE(cmd *cobra.Command) func(cmd *cobra.Command, args 
 			return err
 		}
 
+		pragmas := strings.Join(
+			[]string{
+				"PRAGMA encoding = 'UTF-8';",
+				"PRAGMA foreign_keys = ON;",
+				"PRAGMA busy_timeout = 5000;",
+			}, " ")
+		sqlite.RegisterConnectionHook(func(conn sqlite.ExecQuerierContext, dsn string) error {
+
+			_, err := conn.ExecContext(c.Context, pragmas, nil)
+			if err != nil {
+				return fmt.Errorf("failed to set PRAGMA: %w", err)
+			}
+			return nil
+		})
+
 		db, err := sql.Open("sqlite", c.Config.DSN)
 		if err != nil {
 			return fmt.Errorf("failed to initialize database: %w", err)
 		}
+		db.SetMaxIdleConns(0)
 
-		_, err = db.ExecContext(c.Context, "PRAGMA foreign_keys = ON;")
-		if err != nil {
-			return fmt.Errorf("failed to enable foreign keys: %w", err)
-		}
 		c.DB = db
 
 		err = migrations.Migrate(c.Context, db)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/diamondburned/arikawa/v3/api"
 	"github.com/diamondburned/arikawa/v3/api/cmdroute"
@@ -14,6 +15,7 @@ import (
 	"github.com/diamondburned/arikawa/v3/gateway"
 	"github.com/diamondburned/arikawa/v3/state"
 	"github.com/diamondburned/arikawa/v3/utils/json/option"
+	"github.com/jxs13/league-discord-bot/internal/timerutils"
 	"github.com/jxs13/league-discord-bot/parse"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
@@ -52,8 +54,14 @@ var userCommandList = []api.CreateCommandData{
 			&discord.StringOption{
 				OptionName:  "scheduled_at",
 				Description: fmt.Sprintf("Time when the match starts. Must be in this format: %s", parse.LayoutDateTimeWithZone),
-				MinLength:   option.NewInt(23),
-				MaxLength:   option.NewInt(23),
+				MinLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
+				MaxLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
+				Required:    true,
+			},
+			&discord.StringOption{
+				OptionName:  "location",
+				Description: "Timzone location, e.g. Europe/Berlin.",
+				MinLength:   option.NewInt(1),
 				Required:    true,
 			},
 			&discord.IntegerOption{
@@ -72,6 +80,21 @@ var userCommandList = []api.CreateCommandData{
 				Description: "Role of the second team.",
 				Required:    true,
 			},
+			&discord.UserOption{
+				OptionName:  "moderator",
+				Description: "Moderator",
+				Required:    true,
+			},
+			&discord.UserOption{
+				OptionName:  "streamer",
+				Description: "Streamer",
+				Required:    false,
+			},
+			&discord.StringOption{
+				OptionName:  "stream_url",
+				Description: "url of the streamer or stream",
+				Required:    false,
+			},
 		},
 	},
 }
@@ -81,6 +104,7 @@ type Bot struct {
 	state  *state.State
 	db     *sql.DB
 	userID discord.UserID
+	wg     *sync.WaitGroup
 }
 
 // New requires a discord bot token and returns a Bot instance.
@@ -97,10 +121,16 @@ func New(
 		ctx:   ctx,
 		state: s,
 		db:    db,
+		wg:    &sync.WaitGroup{},
 	}
 
 	s.AddIntents(
 		gateway.IntentGuilds | gateway.IntentGuildMessages | gateway.IntentGuildMessageReactions | gateway.IntentGuildScheduledEvents,
+	)
+
+	var (
+		minBackoff   = 5 * time.Second
+		loopInterval = 10 * time.Second
 	)
 
 	var startupOnce sync.Once
@@ -113,6 +143,31 @@ func New(
 				log.Fatalf("failed to get bot user: %v", err)
 			}
 			bot.userID = me.ID
+
+			bot.wg.Add(1)
+			go timerutils.Loop(
+				bot.ctx,
+				minBackoff,
+				loopInterval,
+				bot.asyncGiveChannelAccess,
+				func() {
+					log.Println("channel access routine stopped")
+					bot.wg.Done()
+				},
+			)
+
+			bot.wg.Add(1)
+			go timerutils.Loop(
+				bot.ctx,
+				minBackoff,
+				loopInterval,
+				bot.asyncReminder,
+				func() {
+					log.Println("reminder routine stopped")
+					bot.wg.Done()
+				},
+			)
+
 		})
 	})
 
@@ -151,6 +206,8 @@ func (b *Bot) Connect(ctx context.Context) error {
 }
 
 func (b *Bot) Close() error {
+	defer b.wg.Wait()
+
 	return errors.Join(
 		b.state.Close(),
 	)
