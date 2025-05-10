@@ -123,7 +123,6 @@ func (b *Bot) asyncReminder() (_ time.Duration, err error) {
 	scheduledAt := time.Unix(r.ScheduledAt, 0)
 	ridx, untilNextReminder, ok := nextReminder(r.ReminderCount, scheduledAt)
 	if !ok {
-		log.Printf("nothing to remind of, next scheduled at %s", scheduledAt)
 		return 0, nil
 	}
 
