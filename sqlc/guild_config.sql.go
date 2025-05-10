@@ -14,20 +14,23 @@ INSERT OR IGNORE INTO guild_config (
     guild_id,
     enabled,
     category_id,
-    channel_delete_delay
+    channel_access_offset,
+    channel_delete_offset
 ) VALUES (
     ?1,
     ?2,
     ?3,
-    ?4
+    ?4,
+    ?5
 )
 `
 
 type AddGuildConfigParams struct {
-	GuildID            string `db:"guild_id"`
-	Enabled            int64  `db:"enabled"`
-	CategoryID         string `db:"category_id"`
-	ChannelDeleteDelay int64  `db:"channel_delete_delay"`
+	GuildID             string `db:"guild_id"`
+	Enabled             int64  `db:"enabled"`
+	CategoryID          string `db:"category_id"`
+	ChannelAccessOffset int64  `db:"channel_access_offset"`
+	ChannelDeleteOffset int64  `db:"channel_delete_offset"`
 }
 
 func (q *Queries) AddGuildConfig(ctx context.Context, arg AddGuildConfigParams) error {
@@ -35,7 +38,8 @@ func (q *Queries) AddGuildConfig(ctx context.Context, arg AddGuildConfigParams) 
 		arg.GuildID,
 		arg.Enabled,
 		arg.CategoryID,
-		arg.ChannelDeleteDelay,
+		arg.ChannelAccessOffset,
+		arg.ChannelDeleteOffset,
 	)
 	return err
 }
@@ -67,16 +71,18 @@ SELECT
     guild_id,
     enabled,
     category_id,
-    channel_delete_delay
+    channel_access_offset,
+    channel_delete_offset
 FROM guild_config
 WHERE guild_id = ?1
 `
 
 type GetGuildConfigRow struct {
-	GuildID            string `db:"guild_id"`
-	Enabled            int64  `db:"enabled"`
-	CategoryID         string `db:"category_id"`
-	ChannelDeleteDelay int64  `db:"channel_delete_delay"`
+	GuildID             string `db:"guild_id"`
+	Enabled             int64  `db:"enabled"`
+	CategoryID          string `db:"category_id"`
+	ChannelAccessOffset int64  `db:"channel_access_offset"`
+	ChannelDeleteOffset int64  `db:"channel_delete_offset"`
 }
 
 func (q *Queries) GetGuildConfig(ctx context.Context, guildID string) (GetGuildConfigRow, error) {
@@ -86,7 +92,8 @@ func (q *Queries) GetGuildConfig(ctx context.Context, guildID string) (GetGuildC
 		&i.GuildID,
 		&i.Enabled,
 		&i.CategoryID,
-		&i.ChannelDeleteDelay,
+		&i.ChannelAccessOffset,
+		&i.ChannelDeleteOffset,
 	)
 	return i, err
 }
@@ -96,17 +103,19 @@ SELECT
     guild_id,
     enabled,
     category_id,
-    channel_delete_delay
+    channel_access_offset,
+    channel_delete_offset
 FROM guild_config
 WHERE category_id = ?1
 LIMIT 1
 `
 
 type GetGuildConfigByCategoryRow struct {
-	GuildID            string `db:"guild_id"`
-	Enabled            int64  `db:"enabled"`
-	CategoryID         string `db:"category_id"`
-	ChannelDeleteDelay int64  `db:"channel_delete_delay"`
+	GuildID             string `db:"guild_id"`
+	Enabled             int64  `db:"enabled"`
+	CategoryID          string `db:"category_id"`
+	ChannelAccessOffset int64  `db:"channel_access_offset"`
+	ChannelDeleteOffset int64  `db:"channel_delete_offset"`
 }
 
 func (q *Queries) GetGuildConfigByCategory(ctx context.Context, categoryID string) (GetGuildConfigByCategoryRow, error) {
@@ -116,7 +125,8 @@ func (q *Queries) GetGuildConfigByCategory(ctx context.Context, categoryID strin
 		&i.GuildID,
 		&i.Enabled,
 		&i.CategoryID,
-		&i.ChannelDeleteDelay,
+		&i.ChannelAccessOffset,
+		&i.ChannelDeleteOffset,
 	)
 	return i, err
 }
@@ -170,22 +180,25 @@ UPDATE guild_config
 SET
     enabled = ?1,
     category_id = ?2,
-    channel_delete_delay = ?3
-WHERE guild_id = ?4
+    channel_access_offset = ?3,
+    channel_delete_offset = ?4
+WHERE guild_id = ?5
 `
 
 type UpdateGuildConfigParams struct {
-	Enabled            int64  `db:"enabled"`
-	CategoryID         string `db:"category_id"`
-	ChannelDeleteDelay int64  `db:"channel_delete_delay"`
-	GuildID            string `db:"guild_id"`
+	Enabled             int64  `db:"enabled"`
+	CategoryID          string `db:"category_id"`
+	ChannelAccessOffset int64  `db:"channel_access_offset"`
+	ChannelDeleteOffset int64  `db:"channel_delete_offset"`
+	GuildID             string `db:"guild_id"`
 }
 
 func (q *Queries) UpdateGuildConfig(ctx context.Context, arg UpdateGuildConfigParams) error {
 	_, err := q.exec(ctx, q.updateGuildConfigStmt, updateGuildConfig,
 		arg.Enabled,
 		arg.CategoryID,
-		arg.ChannelDeleteDelay,
+		arg.ChannelAccessOffset,
+		arg.ChannelDeleteOffset,
 		arg.GuildID,
 	)
 	return err

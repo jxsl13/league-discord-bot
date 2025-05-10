@@ -129,7 +129,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 		CategoryID: categoryID,
 		Overwrites: []discord.Overwrite{
 			{
-				ID:   discord.Snowflake(everyone.ID), // bot can access channel
+				ID:   discord.Snowflake(everyone.ID), // everyone can't access channel
 				Type: discord.OverwriteRole,
 				Deny: discord.PermissionAllText,
 			},
@@ -191,13 +191,16 @@ Please react with %[5]s to confirm your participation.
 	var (
 		channelID    = c.ID
 		channelIDStr = channelID.String()
+		// epoch seconds
+		channelAccessibleAt = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ChannelAccessOffset)).Unix()
+		channelDeleteAt     = scheduledAt.Add(time.Second * time.Duration(cfg.ChannelDeleteOffset)).Unix()
 	)
 
 	err = q.AddMatch(ctx, sqlc.AddMatchParams{
 		GuildID:                        guildID.String(),
 		ChannelID:                      channelIDStr,
-		ChannelAccessibleAt:            max(nowUnix, scheduledAt.Add(-24*7*time.Hour).Unix()),
-		ChannelDeleteAt:                max(nowUnix, scheduledAt.Add(24*time.Hour).Unix()),
+		ChannelAccessibleAt:            max(nowUnix, channelAccessibleAt),
+		ChannelDeleteAt:                max(nowUnix, channelDeleteAt),
 		MessageID:                      msg.ID.String(),
 		ScheduledAt:                    scheduledAt.Unix(),
 		RequiredParticipantsPerTeam:    participantsPerTeam,

@@ -35,7 +35,14 @@ var userCommandList = []api.CreateCommandData{
 				Required:    true,
 			},
 			&discord.StringOption{
-				OptionName:  "channel_delete_delay",
+				OptionName:  "channel_delete_offset",
+				Description: "Duration after match until channel deletion, at least 1h.",
+				MinLength:   option.NewInt(2),
+				MaxLength:   option.NewInt(11),
+				Required:    true,
+			},
+			&discord.StringOption{
+				OptionName:  "channel_access_offset",
 				Description: "Duration after match until channel deletion, at least 1h.",
 				MinLength:   option.NewInt(2),
 				MaxLength:   option.NewInt(11),

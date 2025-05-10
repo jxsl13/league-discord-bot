@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS guild_config (
     guild_id                TEXT PRIMARY KEY NOT NULL,
     enabled                 INTEGER NOT NULL,
     category_id             TEXT NOT NULL,
-    channel_delete_delay    INTEGER NOT NULL DEFAULT 86400,
+    channel_access_offset    INTEGER NOT NULL DEFAULT 604800,
+    channel_delete_offset    INTEGER NOT NULL DEFAULT 86400,
     match_counter           INTEGER NOT NULL DEFAULT 0,
     UNIQUE(category_id)
 );

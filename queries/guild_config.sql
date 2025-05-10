@@ -4,12 +4,14 @@ INSERT OR IGNORE INTO guild_config (
     guild_id,
     enabled,
     category_id,
-    channel_delete_delay
+    channel_access_offset,
+    channel_delete_offset
 ) VALUES (
     :guild_id,
     :enabled,
     :category_id,
-    :channel_delete_delay
+    :channel_access_offset,
+    :channel_delete_offset
 );
 
 -- name: UpdateGuildConfig :exec
@@ -17,7 +19,8 @@ UPDATE guild_config
 SET
     enabled = :enabled,
     category_id = :category_id,
-    channel_delete_delay = :channel_delete_delay
+    channel_access_offset = :channel_access_offset,
+    channel_delete_offset = :channel_delete_offset
 WHERE guild_id = :guild_id;
 
 -- name: UpdateCategoryId :exec
@@ -37,7 +40,8 @@ SELECT
     guild_id,
     enabled,
     category_id,
-    channel_delete_delay
+    channel_access_offset,
+    channel_delete_offset
 FROM guild_config
 WHERE guild_id = :guild_id;
 
@@ -61,7 +65,8 @@ SELECT
     guild_id,
     enabled,
     category_id,
-    channel_delete_delay
+    channel_access_offset,
+    channel_delete_offset
 FROM guild_config
 WHERE category_id = :category_id
 LIMIT 1;

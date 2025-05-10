@@ -9,11 +9,12 @@ type Access struct {
 }
 
 type GuildConfig struct {
-	GuildID            string `db:"guild_id"`
-	Enabled            int64  `db:"enabled"`
-	CategoryID         string `db:"category_id"`
-	ChannelDeleteDelay int64  `db:"channel_delete_delay"`
-	MatchCounter       int64  `db:"match_counter"`
+	GuildID             string `db:"guild_id"`
+	Enabled             int64  `db:"enabled"`
+	CategoryID          string `db:"category_id"`
+	ChannelAccessOffset int64  `db:"channel_access_offset"`
+	ChannelDeleteOffset int64  `db:"channel_delete_offset"`
+	MatchCounter        int64  `db:"match_counter"`
 }
 
 type Match struct {
