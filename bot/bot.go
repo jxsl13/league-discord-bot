@@ -1,0 +1,195 @@
+package bot
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"log"
+	"sync"
+
+	"github.com/diamondburned/arikawa/v3/api"
+	"github.com/diamondburned/arikawa/v3/api/cmdroute"
+	"github.com/diamondburned/arikawa/v3/discord"
+	"github.com/diamondburned/arikawa/v3/gateway"
+	"github.com/diamondburned/arikawa/v3/state"
+	"github.com/diamondburned/arikawa/v3/utils/json/option"
+	"github.com/jxs13/league-discord-bot/parse"
+	"github.com/jxs13/league-discord-bot/sqlc"
+)
+
+var userCommandList = []api.CreateCommandData{
+	{
+		Name:           "configure",
+		Description:    "Configure the bot for the current guild",
+		NoDMPermission: true,
+		DefaultMemberPermissions: discord.NewPermissions(
+			discord.PermissionAdministrator,
+		),
+		Options: []discord.CommandOption{
+			&discord.ChannelOption{
+				OptionName:  "category_id",
+				Description: "Id of the category unser which channels for individual matches are created.",
+				Required:    true,
+			},
+			&discord.StringOption{
+				OptionName:  "channel_delete_delay",
+				Description: "Duration after match until channel deletion, at least 1h.",
+				MinLength:   option.NewInt(2),
+				MaxLength:   option.NewInt(11),
+				Required:    true,
+			},
+		},
+	},
+	{
+		Name:           "schedule-match",
+		Description:    "Schedule a new match",
+		NoDMPermission: true,
+		DefaultMemberPermissions: discord.NewPermissions(
+			discord.PermissionAdministrator,
+		),
+		Options: []discord.CommandOption{
+			&discord.StringOption{
+				OptionName:  "scheduled_at",
+				Description: fmt.Sprintf("Time when the match starts. Must be in this format: %s", parse.LayoutDateTimeWithZone),
+				MinLength:   option.NewInt(23),
+				MaxLength:   option.NewInt(23),
+				Required:    true,
+			},
+			&discord.IntegerOption{
+				OptionName:  "participants_per_team",
+				Description: "Number of participants per team. (3vs3 -> 3)",
+				Min:         option.NewInt(1),
+				Required:    true,
+			},
+			&discord.RoleOption{
+				OptionName:  "team_1_role",
+				Description: "Role of the first team.",
+				Required:    true,
+			},
+			&discord.RoleOption{
+				OptionName:  "team_2_role",
+				Description: "Role of the second team.",
+				Required:    true,
+			},
+		},
+	},
+}
+
+type Bot struct {
+	ctx    context.Context
+	state  *state.State
+	db     *sql.DB
+	userID discord.UserID
+}
+
+// New requires a discord bot token and returns a Bot instance.
+// A bot token starts with Nj... and can be obtained from the discord developer portal.
+func New(
+	ctx context.Context,
+	token string,
+	db *sql.DB,
+) (*Bot, error) {
+
+	s := state.New("Bot " + token)
+
+	bot := &Bot{
+		ctx:   ctx,
+		state: s,
+		db:    db,
+	}
+
+	s.AddIntents(
+		gateway.IntentGuilds | gateway.IntentGuildMessages | gateway.IntentGuildMessageReactions | gateway.IntentGuildScheduledEvents,
+	)
+
+	var startupOnce sync.Once
+	s.AddHandler(func(*gateway.ReadyEvent) {
+		// it's possible that the bot occasionally looses the gateway connection
+		// calling this heavy weight function on every reconnect is not ideal
+		startupOnce.Do(func() {
+			me, err := s.Me()
+			if err != nil {
+				log.Fatalf("failed to get bot user: %v", err)
+			}
+			bot.userID = me.ID
+		})
+	})
+
+	// requires guild message intents
+	s.AddHandler(bot.handleAddGuild)
+	s.AddHandler(bot.handleRemoveGuild)
+
+	s.AddHandler(bot.handleChannelDelete)
+	s.AddHandler(bot.handleAddParticipationReaction)
+	s.AddHandler(bot.handleRemoveParticipationReaction)
+
+	r := cmdroute.NewRouter()
+
+	// admin commands
+	r.AddFunc("configure", bot.commandGuildConfigure)
+
+	// admin + user commands
+	r.AddFunc("schedule-match", bot.commandScheduleMatch)
+	r.AddFunc("list-matches", bot.commandListMatches)
+	r.AddFunc("reschedule-match", bot.commandRescheduleMatch)
+	r.AddFunc("delete-match", bot.commandDeleteMatch)
+
+	s.AddInteractionHandler(r)
+
+	// update user facing commands
+	err := cmdroute.OverwriteCommands(s, userCommandList)
+	if err != nil {
+		return nil, err
+	}
+
+	return bot, nil
+}
+
+func (b *Bot) Connect(ctx context.Context) error {
+	return b.state.Connect(ctx)
+}
+
+func (b *Bot) Close() error {
+	return errors.Join(
+		b.state.Close(),
+	)
+}
+
+func (b *Bot) isMe(userID discord.UserID) bool {
+	return userID == b.userID
+}
+
+func errorResponse(err error) *api.InteractionResponseData {
+	log.Println(err)
+	return &api.InteractionResponseData{
+		Content:         option.NewNullableString("**Error:** " + err.Error()),
+		Flags:           discord.EphemeralMessage,
+		AllowedMentions: &api.AllowedMentions{ /* none */ },
+	}
+}
+
+func (b *Bot) TxQueries(ctx context.Context, f func(ctx context.Context, q *sqlc.Queries) error) error {
+	tx, err := b.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = errors.Join(err, tx.Rollback())
+	}()
+	d := sqlc.New(tx)
+	defer d.Close()
+	err = f(ctx, d)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (b *Bot) Queries(ctx context.Context) (q *sqlc.Queries, err error) {
+	conn, err := b.db.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return sqlc.New(conn), nil
+}

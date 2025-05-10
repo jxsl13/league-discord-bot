@@ -1,0 +1,5 @@
+*.env
+**/*.env
+__debug_bin*
+*.sqlite
+*.db
