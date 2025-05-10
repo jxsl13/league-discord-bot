@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"cmp"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -17,88 +16,6 @@ import (
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
-var (
-	ReminderIntervals = []time.Duration{
-		24 * time.Hour,   // one day before
-		1 * time.Hour,    // one hour before
-		15 * time.Minute, // 15 minutes before
-		5 * time.Minute,  // 5 minutes before
-		30 * time.Second, // now
-	}
-	MaxReminderIndex = int64(len(ReminderIntervals) - 1)
-)
-
-func until(now time.Time, scheduledAt time.Time) time.Duration {
-	until := scheduledAt.Sub(now)
-	if until < 0 {
-		until = -1 * until
-	}
-	return until
-}
-
-func abs(d time.Duration) time.Duration {
-	if d < 0 {
-		return -1 * d
-	}
-	return d
-}
-
-func nextReminder(reminderCnt int64, scheduledAt time.Time) (int64, time.Duration, bool) {
-	if reminderCnt > MaxReminderIndex {
-		return reminderCnt, 0, false
-	}
-
-	var (
-		now = time.Now()
-	)
-
-	untilNextReminder := make([]time.Duration, len(ReminderIntervals))
-	remindersAt := make([]time.Time, len(ReminderIntervals))
-	for i, offset := range ReminderIntervals {
-		remindAt := scheduledAt.Add(-abs(offset))
-
-		remindersAt[i] = remindAt
-		untilNextReminder[i] = until(now, remindAt)
-	}
-
-	sortedIndexList := make([]int, len(untilNextReminder))
-	for i := range len(untilNextReminder) {
-		sortedIndexList[i] = i
-	}
-	slices.SortFunc(sortedIndexList, func(a, b int) int {
-		ad := int64(untilNextReminder[a])
-		bd := int64(untilNextReminder[b])
-		return cmp.Compare(ad, bd)
-	})
-
-	// first element in that list is the closest reminder
-	// let's see if it is in the past or in the future
-	for _, i := range sortedIndexList {
-		i := int64(i)
-		if reminderCnt > i {
-			// this reminder is already sent
-			continue
-		}
-
-		offset := abs(ReminderIntervals[i])
-		remindAt := scheduledAt.Add(-offset)
-		if now.After(remindAt) {
-			// this reminder is in the past, we can skip it
-			continue
-		}
-
-		nextReminderIn := untilNextReminder[i]
-		nextIntervalIn := ReminderIntervals[i]
-		triggerReminder := nextReminderIn < nextIntervalIn
-
-		// this reminder is in the future, we can use it
-		// but only if we are inside the reminder period
-		return i, nextReminderIn, triggerReminder
-	}
-
-	return reminderCnt, 0, false
-}
-
 func (b *Bot) asyncReminder() (_ time.Duration, err error) {
 	defer func() {
 		if err != nil {
@@ -111,7 +28,7 @@ func (b *Bot) asyncReminder() (_ time.Duration, err error) {
 	}
 	defer q.Close()
 
-	r, err := q.NextMatchReminder(b.ctx, MaxReminderIndex)
+	r, err := q.NextMatchReminder(b.ctx, b.reminder.MaxIndex())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// no matches scheduled, nothing to send
@@ -121,7 +38,7 @@ func (b *Bot) asyncReminder() (_ time.Duration, err error) {
 	}
 
 	scheduledAt := time.Unix(r.ScheduledAt, 0)
-	ridx, untilNextReminder, ok := nextReminder(r.ReminderCount, scheduledAt)
+	ridx, untilNextReminder, ok := b.reminder.Next(r.ReminderCount, scheduledAt)
 	if !ok {
 		return 0, nil
 	}

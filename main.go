@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/jxs13/league-discord-bot/bot"
 	"github.com/jxs13/league-discord-bot/config"
@@ -20,7 +22,6 @@ func main() {
 
 	err := NewRootCmd().Execute()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
@@ -96,7 +97,10 @@ func (c *rootContext) PreRunE(cmd *cobra.Command) func(cmd *cobra.Command, args 
 		if err != nil {
 			return fmt.Errorf("failed to initialize database: %w", err)
 		}
-		db.SetMaxIdleConns(0)
+		db.SetMaxOpenConns(10)
+		db.SetMaxIdleConns(4)
+		db.SetConnMaxIdleTime(30 * time.Minute)
+		db.SetConnMaxLifetime(12 * time.Hour)
 
 		c.DB = db
 
@@ -114,12 +118,18 @@ func (c *rootContext) RunE(cmd *cobra.Command, args []string) error {
 		c.Context,
 		c.Config.DiscordToken,
 		c.DB,
+		c.Config.Reminder(),
+		c.Config.BackoffMinDuration,
+		c.Config.AsyncLoopInterval,
+		c.Config.ChannelAccessOffset,
+		c.Config.ChannelDeleteOffset,
 	)
 	if err != nil {
 		return err
 	}
 	defer b.Close()
 
+	log.Println("starting bot")
 	err = b.Connect(c.Context)
 	if err != nil {
 		return err

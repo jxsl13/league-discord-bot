@@ -172,7 +172,7 @@ SELECT
     updated_at,
     updated_by
 FROM matches
-WHERE matches.scheduled_at > unixepoch('now')
+WHERE matches.scheduled_at >= unixepoch('now')
 AND matches.reminder_count <= :max_reminder_index
 ORDER BY scheduled_at ASC
 LIMIT 1;
@@ -188,4 +188,25 @@ UPDATE matches
 SET
     reminder_count = 0
 WHERE channel_id = :channel_id;
+
+
+-- name: NextMatchChannelDelete :one
+SELECT
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    scheduled_at,
+    reminder_count,
+    required_participants_per_team,
+    participation_confirmation_until,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+WHERE matches.channel_delete_at <= unixepoch('now')
+ORDER BY channel_delete_at ASC
+LIMIT 1;
 

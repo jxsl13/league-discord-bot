@@ -32,11 +32,6 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 		return errorResponse(err)
 	}
 
-	categoryID, err := data.Options.Find("category_id").SnowflakeValue()
-	if err != nil {
-		return errorResponse(fmt.Errorf("invalid category_id: %w", err))
-	}
-
 	accessOffset, err := options.Duration("channel_access_offset", time.Hour, 730*time.Hour, data.Options)
 	if err != nil {
 		return errorResponse(err)
@@ -49,7 +44,6 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 
 	err = q.UpdateGuildConfig(b.ctx, sqlc.UpdateGuildConfigParams{
 		GuildID:             data.Event.GuildID.String(),
-		CategoryID:          categoryID.String(),
 		ChannelDeleteOffset: int64(deleteOffset / time.Second),
 		ChannelAccessOffset: int64(accessOffset / time.Second),
 	})
@@ -59,7 +53,11 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 		return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))
 	}
 
-	return nil
+	return &api.InteractionResponseData{
+		Content:         option.NewNullableString("Guild configuration was updated. New match schedules will be created accordingly"),
+		Flags:           discord.EphemeralMessage,
+		AllowedMentions: &api.AllowedMentions{ /* none */ },
+	}
 }
 
 func (b *Bot) handleAddGuild(e *gateway.GuildCreateEvent) {
@@ -98,8 +96,8 @@ func (b *Bot) handleAddGuild(e *gateway.GuildCreateEvent) {
 		GuildID:             e.Guild.ID.String(),
 		Enabled:             boolToInt64(created),
 		CategoryID:          categoryID.String(),
-		ChannelDeleteOffset: int64(24 * time.Hour / time.Second),     // 24h in seconds
-		ChannelAccessOffset: int64(7 * 24 * time.Hour / time.Second), // 7 days in seconds
+		ChannelAccessOffset: int64(b.defaultChannelAccessOffset / time.Second),
+		ChannelDeleteOffset: int64(b.defaultChannelDeleteOffset / time.Second),
 	})
 	if err != nil {
 		log.Printf("error adding guild %d (%s): %v", e.ID, e.Name, err)

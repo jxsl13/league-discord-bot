@@ -17,6 +17,7 @@ import (
 	"github.com/diamondburned/arikawa/v3/utils/json/option"
 	"github.com/jxs13/league-discord-bot/internal/timerutils"
 	"github.com/jxs13/league-discord-bot/parse"
+	"github.com/jxs13/league-discord-bot/reminder"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
@@ -29,11 +30,6 @@ var userCommandList = []api.CreateCommandData{
 			discord.PermissionAdministrator,
 		),
 		Options: []discord.CommandOption{
-			&discord.ChannelOption{
-				OptionName:  "category_id",
-				Description: "Id of the category unser which channels for individual matches are created.",
-				Required:    true,
-			},
 			&discord.StringOption{
 				OptionName:  "channel_delete_offset",
 				Description: "Duration after match until channel deletion, at least 1h.",
@@ -55,8 +51,10 @@ var userCommandList = []api.CreateCommandData{
 		Description:    "Schedule a new match",
 		NoDMPermission: true,
 		DefaultMemberPermissions: discord.NewPermissions(
-			discord.PermissionAdministrator,
+			discord.PermissionViewChannel,
+			discord.PermissionSendMessages,
 		),
+
 		Options: []discord.CommandOption{
 			&discord.StringOption{
 				OptionName:  "scheduled_at",
@@ -112,6 +110,10 @@ type Bot struct {
 	db     *sql.DB
 	userID discord.UserID
 	wg     *sync.WaitGroup
+
+	reminder                   *reminder.Reminder
+	defaultChannelAccessOffset time.Duration
+	defaultChannelDeleteOffset time.Duration
 }
 
 // New requires a discord bot token and returns a Bot instance.
@@ -120,24 +122,27 @@ func New(
 	ctx context.Context,
 	token string,
 	db *sql.DB,
+	reminder *reminder.Reminder,
+	minBackoff time.Duration,
+	loopInterval time.Duration,
+	defaultChannelAccessOffset time.Duration,
+	defaultChannelDeleteOffset time.Duration,
 ) (*Bot, error) {
 
 	s := state.New("Bot " + token)
 
 	bot := &Bot{
-		ctx:   ctx,
-		state: s,
-		db:    db,
-		wg:    &sync.WaitGroup{},
+		ctx:                        ctx,
+		state:                      s,
+		db:                         db,
+		wg:                         &sync.WaitGroup{},
+		reminder:                   reminder,
+		defaultChannelAccessOffset: defaultChannelAccessOffset,
+		defaultChannelDeleteOffset: defaultChannelDeleteOffset,
 	}
 
 	s.AddIntents(
 		gateway.IntentGuilds | gateway.IntentGuildMessages | gateway.IntentGuildMessageReactions | gateway.IntentGuildScheduledEvents,
-	)
-
-	var (
-		minBackoff   = 5 * time.Second
-		loopInterval = 10 * time.Second
 	)
 
 	var startupOnce sync.Once
@@ -145,6 +150,7 @@ func New(
 		// it's possible that the bot occasionally looses the gateway connection
 		// calling this heavy weight function on every reconnect is not ideal
 		startupOnce.Do(func() {
+
 			me, err := s.Me()
 			if err != nil {
 				log.Fatalf("failed to get bot user: %v", err)
@@ -175,6 +181,20 @@ func New(
 				},
 			)
 
+			bot.wg.Add(1)
+
+			go timerutils.Loop(
+				bot.ctx,
+				minBackoff,
+				loopInterval,
+				bot.asyncDeleteExpiredMatchChannel,
+				func() {
+					log.Println("channel delete routine stopped")
+					bot.wg.Done()
+				},
+			)
+
+			log.Println("bot is ready")
 		})
 	})
 
@@ -193,9 +213,7 @@ func New(
 
 	// admin + user commands
 	r.AddFunc("schedule-match", bot.commandScheduleMatch)
-	r.AddFunc("list-matches", bot.commandListMatches)
 	r.AddFunc("reschedule-match", bot.commandRescheduleMatch)
-	r.AddFunc("delete-match", bot.commandDeleteMatch)
 
 	s.AddInteractionHandler(r)
 

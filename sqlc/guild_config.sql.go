@@ -179,15 +179,13 @@ const updateGuildConfig = `-- name: UpdateGuildConfig :exec
 UPDATE guild_config
 SET
     enabled = ?1,
-    category_id = ?2,
-    channel_access_offset = ?3,
-    channel_delete_offset = ?4
-WHERE guild_id = ?5
+    channel_access_offset = ?2,
+    channel_delete_offset = ?3
+WHERE guild_id = ?4
 `
 
 type UpdateGuildConfigParams struct {
 	Enabled             int64  `db:"enabled"`
-	CategoryID          string `db:"category_id"`
 	ChannelAccessOffset int64  `db:"channel_access_offset"`
 	ChannelDeleteOffset int64  `db:"channel_delete_offset"`
 	GuildID             string `db:"guild_id"`
@@ -196,7 +194,6 @@ type UpdateGuildConfigParams struct {
 func (q *Queries) UpdateGuildConfig(ctx context.Context, arg UpdateGuildConfigParams) error {
 	_, err := q.exec(ctx, q.updateGuildConfigStmt, updateGuildConfig,
 		arg.Enabled,
-		arg.CategoryID,
 		arg.ChannelAccessOffset,
 		arg.ChannelDeleteOffset,
 		arg.GuildID,

@@ -147,6 +147,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.nextAccessibleChannelStmt, err = db.PrepareContext(ctx, nextAccessibleChannel); err != nil {
 		return nil, fmt.Errorf("error preparing query NextAccessibleChannel: %w", err)
 	}
+	if q.nextMatchChannelDeleteStmt, err = db.PrepareContext(ctx, nextMatchChannelDelete); err != nil {
+		return nil, fmt.Errorf("error preparing query NextMatchChannelDelete: %w", err)
+	}
 	if q.nextMatchCounterStmt, err = db.PrepareContext(ctx, nextMatchCounter); err != nil {
 		return nil, fmt.Errorf("error preparing query NextMatchCounter: %w", err)
 	}
@@ -393,6 +396,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing nextAccessibleChannelStmt: %w", cerr)
 		}
 	}
+	if q.nextMatchChannelDeleteStmt != nil {
+		if cerr := q.nextMatchChannelDeleteStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextMatchChannelDeleteStmt: %w", cerr)
+		}
+	}
 	if q.nextMatchCounterStmt != nil {
 		if cerr := q.nextMatchCounterStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing nextMatchCounterStmt: %w", cerr)
@@ -533,6 +541,7 @@ type Queries struct {
 	listMatchStreamersStmt                     *sql.Stmt
 	listMatchTeamsStmt                         *sql.Stmt
 	nextAccessibleChannelStmt                  *sql.Stmt
+	nextMatchChannelDeleteStmt                 *sql.Stmt
 	nextMatchCounterStmt                       *sql.Stmt
 	nextMatchReminderStmt                      *sql.Stmt
 	nextParticipationConfirmationDeadlineStmt  *sql.Stmt
@@ -592,6 +601,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		listMatchStreamersStmt:                     q.listMatchStreamersStmt,
 		listMatchTeamsStmt:                         q.listMatchTeamsStmt,
 		nextAccessibleChannelStmt:                  q.nextAccessibleChannelStmt,
+		nextMatchChannelDeleteStmt:                 q.nextMatchChannelDeleteStmt,
 		nextMatchCounterStmt:                       q.nextMatchCounterStmt,
 		nextMatchReminderStmt:                      q.nextMatchReminderStmt,
 		nextParticipationConfirmationDeadlineStmt:  q.nextParticipationConfirmationDeadlineStmt,

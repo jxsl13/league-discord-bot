@@ -288,6 +288,64 @@ func (q *Queries) NextAccessibleChannel(ctx context.Context) (NextAccessibleChan
 	return i, err
 }
 
+const nextMatchChannelDelete = `-- name: NextMatchChannelDelete :one
+SELECT
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    scheduled_at,
+    reminder_count,
+    required_participants_per_team,
+    participation_confirmation_until,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+WHERE matches.channel_delete_at <= unixepoch('now')
+ORDER BY channel_delete_at ASC
+LIMIT 1
+`
+
+type NextMatchChannelDeleteRow struct {
+	ChannelID                      string `db:"channel_id"`
+	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
+	ChannelAccessible              int64  `db:"channel_accessible"`
+	ChannelDeleteAt                int64  `db:"channel_delete_at"`
+	MessageID                      string `db:"message_id"`
+	ScheduledAt                    int64  `db:"scheduled_at"`
+	ReminderCount                  int64  `db:"reminder_count"`
+	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
+	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
+	CreatedAt                      int64  `db:"created_at"`
+	CreatedBy                      string `db:"created_by"`
+	UpdatedAt                      int64  `db:"updated_at"`
+	UpdatedBy                      string `db:"updated_by"`
+}
+
+func (q *Queries) NextMatchChannelDelete(ctx context.Context) (NextMatchChannelDeleteRow, error) {
+	row := q.queryRow(ctx, q.nextMatchChannelDeleteStmt, nextMatchChannelDelete)
+	var i NextMatchChannelDeleteRow
+	err := row.Scan(
+		&i.ChannelID,
+		&i.ChannelAccessibleAt,
+		&i.ChannelAccessible,
+		&i.ChannelDeleteAt,
+		&i.MessageID,
+		&i.ScheduledAt,
+		&i.ReminderCount,
+		&i.RequiredParticipantsPerTeam,
+		&i.ParticipationConfirmationUntil,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
 const nextMatchReminder = `-- name: NextMatchReminder :one
 SELECT
     channel_id,
@@ -304,7 +362,7 @@ SELECT
     updated_at,
     updated_by
 FROM matches
-WHERE matches.scheduled_at > unixepoch('now')
+WHERE matches.scheduled_at >= unixepoch('now')
 AND matches.reminder_count <= ?1
 ORDER BY scheduled_at ASC
 LIMIT 1

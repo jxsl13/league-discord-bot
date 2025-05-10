@@ -268,14 +268,6 @@ Please react with %[5]s to confirm your participation.
 	}
 }
 
-func (b *Bot) commandListMatches(ctx context.Context, data cmdroute.CommandData) *api.InteractionResponseData {
-	return nil
-}
-
 func (b *Bot) commandRescheduleMatch(ctx context.Context, data cmdroute.CommandData) *api.InteractionResponseData {
-	return nil
-}
-
-func (b *Bot) commandDeleteMatch(ctx context.Context, data cmdroute.CommandData) *api.InteractionResponseData {
 	return nil
 }

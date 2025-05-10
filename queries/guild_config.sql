@@ -18,7 +18,6 @@ INSERT OR IGNORE INTO guild_config (
 UPDATE guild_config
 SET
     enabled = :enabled,
-    category_id = :category_id,
     channel_access_offset = :channel_access_offset,
     channel_delete_offset = :channel_delete_offset
 WHERE guild_id = :guild_id;
