@@ -1,11 +1,11 @@
 package bot
 
 import (
+	"cmp"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"slices"
 	"strings"
 	"time"
@@ -28,37 +28,78 @@ var (
 	MaxReminderIndex = int64(len(ReminderIntervals) - 1)
 )
 
+func until(now time.Time, scheduledAt time.Time) time.Duration {
+	until := scheduledAt.Sub(now)
+	if until < 0 {
+		until = -1 * until
+	}
+	return until
+}
+
+func abs(d time.Duration) time.Duration {
+	if d < 0 {
+		return -1 * d
+	}
+	return d
+}
+
 func nextReminder(reminderCnt int64, scheduledAt time.Time) (int64, time.Duration, bool) {
+	if reminderCnt > MaxReminderIndex {
+		return reminderCnt, 0, false
+	}
+
 	var (
-		now     = time.Now()
-		crid    = 0
-		crUntil = time.Duration(math.MaxInt64)
-		rOffset = ReminderIntervals[0]
+		now = time.Now()
 	)
 
-	for id, offset := range ReminderIntervals {
-		if int(reminderCnt) > id {
+	untilNextReminder := make([]time.Duration, len(ReminderIntervals))
+	remindersAt := make([]time.Time, len(ReminderIntervals))
+	for i, offset := range ReminderIntervals {
+		remindAt := scheduledAt.Add(-abs(offset))
+
+		remindersAt[i] = remindAt
+		untilNextReminder[i] = until(now, remindAt)
+	}
+
+	sortedIndexList := make([]int, len(untilNextReminder))
+	for i := range len(untilNextReminder) {
+		sortedIndexList[i] = i
+	}
+	slices.SortFunc(sortedIndexList, func(a, b int) int {
+		ad := int64(untilNextReminder[a])
+		bd := int64(untilNextReminder[b])
+		return cmp.Compare(ad, bd)
+	})
+
+	// first element in that list is the closest reminder
+	// let's see if it is in the past or in the future
+	for _, i := range sortedIndexList {
+		i := int64(i)
+		if reminderCnt > i {
+			// this reminder is already sent
 			continue
 		}
 
-		reminderAt := scheduledAt.Add(-offset)
+		offset := abs(ReminderIntervals[i])
+		remindAt := scheduledAt.Add(-offset)
+		if now.After(remindAt) {
+			// this reminder is in the past, we can skip it
+			continue
+		}
 
-		until := reminderAt.Sub(now)
-		if until < 0 {
-			until = -1 * until
-		}
-		if until < crUntil {
-			crid = id
-			crUntil = until
-			rOffset = offset
-		}
+		nextReminderIn := untilNextReminder[i]
+		nextIntervalIn := ReminderIntervals[i]
+		triggerReminder := nextReminderIn < nextIntervalIn
+
+		// this reminder is in the future, we can use it
+		// but only if we are inside the reminder period
+		return i, nextReminderIn, triggerReminder
 	}
-	ok := crUntil < rOffset
 
-	return int64(crid), rOffset, ok
+	return reminderCnt, 0, false
 }
 
-func (b *Bot) asyncReminder() (d time.Duration, err error) {
+func (b *Bot) asyncReminder() (_ time.Duration, err error) {
 	defer func() {
 		if err != nil {
 			log.Printf("error in reminder routine: %v", err)
@@ -80,7 +121,7 @@ func (b *Bot) asyncReminder() (d time.Duration, err error) {
 	}
 
 	scheduledAt := time.Unix(r.ScheduledAt, 0)
-	ridx, d, ok := nextReminder(r.ReminderCount, scheduledAt)
+	ridx, untilNextReminder, ok := nextReminder(r.ReminderCount, scheduledAt)
 	if !ok {
 		log.Printf("nothing to remind of, next scheduled at %s", scheduledAt)
 		return 0, nil
@@ -108,8 +149,9 @@ func (b *Bot) asyncReminder() (d time.Duration, err error) {
 	}
 
 	text := ""
-	if d >= time.Minute {
-		text = fmt.Sprintf("The match is starting in about %s. ", format.Duration(d))
+	untilMatch := time.Until(scheduledAt)
+	if untilMatch >= time.Minute {
+		text = fmt.Sprintf("The match is starting in about %s. ", format.Duration(untilMatch))
 	} else {
 		text = "The match is starting now!"
 	}
@@ -188,13 +230,14 @@ func (b *Bot) asyncReminder() (d time.Duration, err error) {
 	}
 
 	// update reminder count
+	newReminderCount := max(r.ReminderCount+1, ridx+1)
 	err = q.UpdateMatchReminderCount(b.ctx, sqlc.UpdateMatchReminderCountParams{
 		ChannelID:     r.ChannelID,
-		ReminderCount: ridx + 1,
+		ReminderCount: newReminderCount,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("error updating reminder count: %w", err)
 	}
 
-	return 0, nil
+	return untilNextReminder, nil
 }
