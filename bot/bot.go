@@ -15,9 +15,9 @@ import (
 	"github.com/diamondburned/arikawa/v3/gateway"
 	"github.com/diamondburned/arikawa/v3/state"
 	"github.com/diamondburned/arikawa/v3/utils/json/option"
+	"github.com/jxs13/league-discord-bot/internal/parse"
+	"github.com/jxs13/league-discord-bot/internal/reminder"
 	"github.com/jxs13/league-discord-bot/internal/timerutils"
-	"github.com/jxs13/league-discord-bot/parse"
-	"github.com/jxs13/league-discord-bot/reminder"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 

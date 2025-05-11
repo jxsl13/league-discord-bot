@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jxs13/league-discord-bot/reminder"
+	"github.com/jxs13/league-discord-bot/internal/reminder"
 )
 
 func New() *Config {
 	return &Config{
-		DSN:                 filepath.Join(filepath.Dir(os.Args[0]), "league.db?_txlock=immediate"),
+		DSN:                 filepath.Join(filepath.Dir(os.Args[0]), "league.db"),
 		ChannelDeleteOffset: 24 * time.Hour,
 		ChannelAccessOffset: 7 * 24 * time.Hour,
 		AsyncLoopInterval:   15 * time.Second,
@@ -106,10 +106,9 @@ func (c *Config) Validate() error {
 
 	v := u.Query()
 	v["_txlock"] = []string{"immediate"} // "deferred" (the default), "immediate", or "exclusive"
-
 	u.RawQuery = v.Encode()
-
-	c.DSN = u.String()
+	dsn = u.String()
+	c.DSN = dsn
 	return nil
 }
 

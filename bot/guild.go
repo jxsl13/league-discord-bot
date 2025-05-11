@@ -13,8 +13,8 @@ import (
 	"github.com/diamondburned/arikawa/v3/discord"
 	"github.com/diamondburned/arikawa/v3/gateway"
 	"github.com/diamondburned/arikawa/v3/utils/json/option"
-	"github.com/jxs13/league-discord-bot/discordutils"
-	"github.com/jxs13/league-discord-bot/options"
+	"github.com/jxs13/league-discord-bot/internal/discordutils"
+	"github.com/jxs13/league-discord-bot/internal/options"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 

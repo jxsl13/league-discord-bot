@@ -8,8 +8,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/jxs13/league-discord-bot/discordutils"
-	"github.com/jxs13/league-discord-bot/format"
+	"github.com/jxs13/league-discord-bot/internal/discordutils"
+	"github.com/jxs13/league-discord-bot/internal/format"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 

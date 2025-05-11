@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/diamondburned/arikawa/v3/api"
-	"github.com/jxs13/league-discord-bot/discordutils"
+	"github.com/jxs13/league-discord-bot/internal/discordutils"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 

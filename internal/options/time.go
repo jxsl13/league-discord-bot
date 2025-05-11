@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/diamondburned/arikawa/v3/discord"
-	"github.com/jxs13/league-discord-bot/parse"
+	"github.com/jxs13/league-discord-bot/internal/parse"
 )
 
 func TimeInLocation(datetimeName, locationName string, options discord.CommandInteractionOptions) (time.Time, error) {
