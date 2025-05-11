@@ -230,3 +230,8 @@ UPDATE matches
 SET
     participation_entry_closed = 1
 WHERE channel_id = :channel_id;
+
+-- name: CountMatches :one
+SELECT COUNT(channel_id) AS count
+FROM matches
+WHERE guild_id = :guild_id;

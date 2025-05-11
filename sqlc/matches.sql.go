@@ -92,6 +92,19 @@ func (q *Queries) CloseParticipationEntry(ctx context.Context, channelID string)
 	return err
 }
 
+const countMatches = `-- name: CountMatches :one
+SELECT COUNT(channel_id) AS count
+FROM matches
+WHERE guild_id = ?1
+`
+
+func (q *Queries) CountMatches(ctx context.Context, guildID string) (int64, error) {
+	row := q.queryRow(ctx, q.countMatchesStmt, countMatches, guildID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteGuildMatches = `-- name: DeleteGuildMatches :exec
 DELETE FROM matches WHERE guild_id = ?1
 `

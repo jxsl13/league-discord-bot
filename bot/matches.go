@@ -18,16 +18,19 @@ import (
 const (
 	ReactionEmoji = "🎮"
 	// ReactionEmoji = "📆"
+
+	MaxConcurrentMatches = 50 // Category limitation which only allows for up to 50 channels
 )
 
 func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandData) (resp *api.InteractionResponseData) {
 
 	var (
-		guildID   = data.Event.GuildID
-		now       = time.Now()
-		nowUnix   = now.Unix()
-		userID    = data.Event.SenderID()
-		userIDStr = userID.String()
+		guildID    = data.Event.GuildID
+		guildIDStr = guildID.String()
+		now        = time.Now()
+		nowUnix    = now.Unix()
+		userID     = data.Event.SenderID()
+		userIDStr  = userID.String()
 	)
 
 	err := b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
@@ -69,22 +72,22 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			return err
 		}
 
-		err = b.checkRoleIDs(guildID, team1, team2)
-		if err != nil {
-			return err
-		}
-
-		err = b.checkUserIDs(guildID, moderatorID)
-		if err != nil {
-			return err
-		}
-
 		streamUrl, _, err := options.OptionalUrl("stream_url", data.Options)
 		if err != nil {
 			return err
 		}
 
 		streamerID, okStreamer, err := options.OptionalUserID("streamer", data.Options)
+		if err != nil {
+			return err
+		}
+
+		err = b.checkRoleIDs(guildID, team1, team2)
+		if err != nil {
+			return err
+		}
+
+		err = b.checkUserIDs(guildID, moderatorID)
 		if err != nil {
 			return err
 		}
@@ -96,7 +99,17 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			}
 		}
 
-		cfg, err := q.GetGuildConfig(ctx, guildID.String())
+		n, err := q.CountMatches(ctx, guildIDStr)
+		if err != nil {
+			err = fmt.Errorf("error counting matches: %w", err)
+			return fmt.Errorf("%w, please contact the owner of the bot", err)
+		}
+
+		if n >= MaxConcurrentMatches {
+			return fmt.Errorf("error: maximum number of concurrent matches reached: %d", MaxConcurrentMatches)
+		}
+
+		cfg, err := q.GetGuildConfig(ctx, guildIDStr)
 		if err != nil {
 			err = fmt.Errorf("error getting guild config: %w", err)
 			return fmt.Errorf("%w, please contact the owner of the bot", err)
