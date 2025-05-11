@@ -29,4 +29,5 @@ SELECT
     user_id,
     url
 FROM streamers
-WHERE channel_id = :channel_id;
+WHERE channel_id = :channel_id
+ORDER BY user_id;

@@ -14,12 +14,28 @@ func Snowflake(id string) (discord.Snowflake, error) {
 	return s, nil
 }
 
+func ParseGuildID(id string) (discord.GuildID, error) {
+	s, err := Snowflake(id)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse guild ID: %w", err)
+	}
+	return discord.GuildID(s), nil
+}
+
 func ParseChannelID(id string) (discord.ChannelID, error) {
 	s, err := Snowflake(id)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse channel ID: %w", err)
 	}
 	return discord.ChannelID(s), nil
+}
+
+func ParseMessageID(id string) (discord.MessageID, error) {
+	s, err := Snowflake(id)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse message ID: %w", err)
+	}
+	return discord.MessageID(s), nil
 }
 
 func ParseRoleID(id string) (discord.RoleID, error) {

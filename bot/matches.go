@@ -182,7 +182,7 @@ Please react with %[5]s to confirm your participation.
 		}
 	}()
 
-	err = b.state.React(c.ID, msg.ID, discord.APIEmoji(ReactionEmoji))
+	err = b.state.React(c.ID, msg.ID, ReactionEmoji)
 	if err != nil {
 		err = fmt.Errorf("error reacting to message: %w", err)
 		return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))

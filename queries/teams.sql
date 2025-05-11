@@ -26,14 +26,15 @@ FROM teams
 WHERE channel_id = :channel_id
 AND role_id = :role_id;
 
--- name: GetMatchTeamByRoles :one
+-- name: GetMatchTeamByRoles :many
 SELECT
     channel_id,
     role_id,
     confirmed_participants
 FROM teams
 WHERE channel_id = :channel_id
-AND role_id IN (sqlc.slice(':role_ids'));
+AND role_id IN (sqlc.slice(':role_ids'))
+ORDER BY role_id;
 
 -- name: ListMatchTeams :many
 SELECT
@@ -41,7 +42,8 @@ SELECT
     role_id,
     confirmed_participants
 FROM teams
-WHERE channel_id = :channel_id;
+WHERE channel_id = :channel_id
+ORDER BY role_id;
 
 -- name: IncreaseMatchTeamConfirmedParticipants :exec
 UPDATE teams

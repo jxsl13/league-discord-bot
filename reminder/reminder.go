@@ -16,6 +16,10 @@ func (r *Reminder) MaxIndex() int64 {
 	return r.maxReminderIndex
 }
 
+func (r *Reminder) DisabledIndex() int64 {
+	return r.maxReminderIndex + 1
+}
+
 func New(intervals ...time.Duration) (*Reminder, error) {
 	if len(intervals) == 0 {
 		return nil, errors.New("reminder intervals cannot be empty")

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	_ "time/tzdata" // we want to have an embedded timezone database, because we work with those
+
 	"github.com/jxs13/league-discord-bot/bot"
 	"github.com/jxs13/league-discord-bot/config"
 	"github.com/jxs13/league-discord-bot/migrations"
@@ -97,8 +99,7 @@ func (c *rootContext) PreRunE(cmd *cobra.Command) func(cmd *cobra.Command, args 
 		if err != nil {
 			return fmt.Errorf("failed to initialize database: %w", err)
 		}
-		db.SetMaxOpenConns(10)
-		db.SetMaxIdleConns(4)
+		db.SetMaxIdleConns(10)
 		db.SetConnMaxIdleTime(30 * time.Minute)
 		db.SetConnMaxLifetime(12 * time.Hour)
 

@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS matches (
     reminder_count                      INTEGER NOT NULL DEFAULT 0,
     required_participants_per_team      INTEGER NOT NULL,
     participation_confirmation_until    INTEGER NOT NULL,
+    participation_entry_closed          INTEGER NOT NULL DEFAULT 0,
     created_at                          INTEGER NOT NULL,
     created_by                          TEXT NOT NULL,
     updated_at                          INTEGER NOT NULL DEFAULT (unixepoch('now')),

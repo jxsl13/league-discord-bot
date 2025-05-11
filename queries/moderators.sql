@@ -27,6 +27,7 @@ SELECT
     channel_id,
     user_id
 FROM moderators
-WHERE channel_id = :channel_id;
+WHERE channel_id = :channel_id
+ORDER BY user_id;
 
 

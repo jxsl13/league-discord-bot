@@ -89,6 +89,7 @@ SELECT
     user_id
 FROM moderators
 WHERE channel_id = ?1
+ORDER BY user_id
 `
 
 func (q *Queries) ListMatchModerators(ctx context.Context, channelID string) ([]Moderator, error) {

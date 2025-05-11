@@ -28,6 +28,7 @@ type Match struct {
 	ReminderCount                  int64  `db:"reminder_count"`
 	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
 	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
+	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
 	CreatedAt                      int64  `db:"created_at"`
 	CreatedBy                      string `db:"created_by"`
 	UpdatedAt                      int64  `db:"updated_at"`

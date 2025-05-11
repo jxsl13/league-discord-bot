@@ -93,6 +93,7 @@ SELECT
     url
 FROM streamers
 WHERE channel_id = ?1
+ORDER BY user_id
 `
 
 func (q *Queries) ListMatchStreamers(ctx context.Context, channelID string) ([]Streamer, error) {

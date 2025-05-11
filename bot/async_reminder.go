@@ -5,12 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"slices"
-	"strings"
 	"time"
 
 	"github.com/diamondburned/arikawa/v3/api"
-	"github.com/diamondburned/arikawa/v3/discord"
 	"github.com/jxs13/league-discord-bot/discordutils"
 	"github.com/jxs13/league-discord-bot/format"
 	"github.com/jxs13/league-discord-bot/sqlc"
@@ -54,7 +51,7 @@ func (b *Bot) asyncReminder() (_ time.Duration, err error) {
 		return 0, err
 	}
 
-	modUserIds, err := b.listMatchModeratorUserIDs(b.ctx, q, channelID)
+	modUserIDs, err := b.listMatchModeratorUserIDs(b.ctx, q, channelID)
 	if err != nil {
 		return 0, err
 	}
@@ -72,72 +69,18 @@ func (b *Bot) asyncReminder() (_ time.Duration, err error) {
 		text = "The match is starting now!"
 	}
 
-	var sb strings.Builder
-	sb.WriteString(text)
-	sb.WriteString("\n")
-
-	roleIDs := make([]discord.RoleID, 0, len(teamRoleIDs))
-	userIDs := make([]discord.UserID, 0, len(modUserIds)+len(streamers))
-
-	if len(teamRoleIDs) > 0 {
-		sb.WriteString("Teams: ")
-		for idx, rid := range teamRoleIDs {
-			roleIDs = append(roleIDs, rid)
-
-			sb.WriteString(rid.Mention())
-			if idx < len(teamRoleIDs)-1 {
-				sb.WriteString(", ")
-			}
-		}
-		sb.WriteString("\n")
-	}
-
-	if len(modUserIds) > 0 {
-		sb.WriteString("Moderators: ")
-		for idx, uid := range modUserIds {
-			userIDs = append(userIDs, uid)
-
-			sb.WriteString(uid.Mention())
-			if idx < len(teamRoleIDs)-1 {
-				sb.WriteString(", ")
-			}
-		}
-		sb.WriteString("\n")
-	}
-
-	if len(streamers) > 0 {
-		if len(streamers) > 1 {
-			sb.WriteString("Streamers: \n")
-		} else {
-			sb.WriteString("Streamer: ")
-		}
-		for idx, s := range streamers {
-			userIDs = append(userIDs, s.UserID)
-
-			sb.WriteString("\t")
-			sb.WriteString(s.Mention())
-			if idx < len(streamers)-1 {
-				sb.WriteString("\n")
-			}
-		}
-	}
-
-	slices.Sort(userIDs)
-	slices.Sort(roleIDs)
+	content, allowedMentions := FormatNotification(
+		text,
+		"",
+		teamRoleIDs,
+		modUserIDs,
+		streamers,
+		nil,
+	)
 
 	msg := api.SendMessageData{
-		Content: sb.String(),
-		AllowedMentions: &api.AllowedMentions{
-
-			/*
-				Parse: []api.AllowedMentionType{
-					api.AllowRoleMention,
-					api.AllowUserMention,
-				},
-			*/
-			Roles: slices.Compact(roleIDs),
-			Users: slices.Compact(userIDs),
-		},
+		Content:         content,
+		AllowedMentions: allowedMentions,
 	}
 
 	_, err = b.state.SendMessageComplex(channelID, msg)

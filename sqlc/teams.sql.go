@@ -131,7 +131,7 @@ func (q *Queries) GetMatchTeam(ctx context.Context, arg GetMatchTeamParams) (Get
 	return i, err
 }
 
-const getMatchTeamByRoles = `-- name: GetMatchTeamByRoles :one
+const getMatchTeamByRoles = `-- name: GetMatchTeamByRoles :many
 SELECT
     channel_id,
     role_id,
@@ -139,6 +139,7 @@ SELECT
 FROM teams
 WHERE channel_id = ?1
 AND role_id IN (/*SLICE::role_ids*/?)
+ORDER BY role_id
 `
 
 type GetMatchTeamByRolesParams struct {
@@ -152,7 +153,7 @@ type GetMatchTeamByRolesRow struct {
 	ConfirmedParticipants int64  `db:"confirmed_participants"`
 }
 
-func (q *Queries) GetMatchTeamByRoles(ctx context.Context, arg GetMatchTeamByRolesParams) (GetMatchTeamByRolesRow, error) {
+func (q *Queries) GetMatchTeamByRoles(ctx context.Context, arg GetMatchTeamByRolesParams) ([]GetMatchTeamByRolesRow, error) {
 	query := getMatchTeamByRoles
 	var queryParams []interface{}
 	queryParams = append(queryParams, arg.ChannelID)
@@ -164,10 +165,26 @@ func (q *Queries) GetMatchTeamByRoles(ctx context.Context, arg GetMatchTeamByRol
 	} else {
 		query = strings.Replace(query, "/*SLICE::role_ids*/?", "NULL", 1)
 	}
-	row := q.queryRow(ctx, nil, query, queryParams...)
-	var i GetMatchTeamByRolesRow
-	err := row.Scan(&i.ChannelID, &i.RoleID, &i.ConfirmedParticipants)
-	return i, err
+	rows, err := q.query(ctx, nil, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetMatchTeamByRolesRow{}
+	for rows.Next() {
+		var i GetMatchTeamByRolesRow
+		if err := rows.Scan(&i.ChannelID, &i.RoleID, &i.ConfirmedParticipants); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const increaseMatchTeamConfirmedParticipants = `-- name: IncreaseMatchTeamConfirmedParticipants :exec
@@ -194,6 +211,7 @@ SELECT
     confirmed_participants
 FROM teams
 WHERE channel_id = ?1
+ORDER BY role_id
 `
 
 type ListMatchTeamsRow struct {

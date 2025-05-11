@@ -49,6 +49,7 @@ SELECT
     reminder_count,
     required_participants_per_team,
     participation_confirmation_until,
+    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -64,8 +65,9 @@ SET
     reminder_count = :reminder_count,
     required_participants_per_team = :required_participants_per_team,
     participation_confirmation_until = :participation_confirmation_until,
+    participation_entry_closed = 0,
     channel_accessible_at = :channel_accessible_at,
-    channel_accessible = :channel_accessible,
+    channel_accessible = 0,
     channel_delete_at = :channel_delete_at,
     updated_by = :updated_by
 WHERE channel_id = :channel_id;
@@ -73,6 +75,7 @@ WHERE channel_id = :channel_id;
 
 -- name: GetMatch :one
 SELECT
+    guild_id,
     channel_id,
     channel_accessible_at,
     channel_accessible,
@@ -82,6 +85,7 @@ SELECT
     reminder_count,
     required_participants_per_team,
     participation_confirmation_until,
+    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -91,6 +95,7 @@ WHERE channel_id = :channel_id;
 
 -- name: NextAccessibleChannel :one
 SELECT
+    guild_id,
     channel_id,
     channel_accessible_at,
     channel_accessible,
@@ -100,6 +105,7 @@ SELECT
     reminder_count,
     required_participants_per_team,
     participation_confirmation_until,
+    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -115,28 +121,9 @@ SET
     channel_accessible = :channel_accessible
 WHERE channel_id = :channel_id;
 
--- name: NextParticipationConfirmationDeadline :one
-SELECT
-    channel_id,
-    channel_accessible_at,
-    channel_accessible,
-    channel_delete_at,
-    message_id,
-    scheduled_at,
-    reminder_count,
-    required_participants_per_team,
-    participation_confirmation_until,
-    created_at,
-    created_by,
-    updated_at,
-    updated_by
-FROM matches
-WHERE matches.participation_confirmation_until > unixepoch('now')
-ORDER BY participation_confirmation_until ASC
-LIMIT 1;
-
 -- name: NextScheduledMatch :one
 SELECT
+    guild_id,
     channel_id,
     channel_accessible_at,
     channel_accessible,
@@ -146,6 +133,7 @@ SELECT
     reminder_count,
     required_participants_per_team,
     participation_confirmation_until,
+    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -158,6 +146,7 @@ LIMIT 1;
 
 -- name: NextMatchReminder :one
 SELECT
+    guild_id,
     channel_id,
     channel_accessible_at,
     channel_accessible,
@@ -167,6 +156,7 @@ SELECT
     reminder_count,
     required_participants_per_team,
     participation_confirmation_until,
+    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -192,6 +182,7 @@ WHERE channel_id = :channel_id;
 
 -- name: NextMatchChannelDelete :one
 SELECT
+    guild_id,
     channel_id,
     channel_accessible_at,
     channel_accessible,
@@ -201,6 +192,7 @@ SELECT
     reminder_count,
     required_participants_per_team,
     participation_confirmation_until,
+    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -210,3 +202,31 @@ WHERE matches.channel_delete_at <= unixepoch('now')
 ORDER BY channel_delete_at ASC
 LIMIT 1;
 
+-- name: NextParticipationConfirmationDeadline :one
+SELECT
+    guild_id,
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    scheduled_at,
+    reminder_count,
+    required_participants_per_team,
+    participation_confirmation_until,
+    participation_entry_closed,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+WHERE matches.participation_confirmation_until <= unixepoch('now')
+AND matches.participation_entry_closed = 0
+ORDER BY participation_confirmation_until ASC
+LIMIT 1;
+
+-- name: CloseParticipationEntry :exec
+UPDATE matches
+SET
+    participation_entry_closed = 1
+WHERE channel_id = :channel_id;

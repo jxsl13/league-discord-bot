@@ -54,6 +54,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addMatchTeamResultsStmt, err = db.PrepareContext(ctx, addMatchTeamResults); err != nil {
 		return nil, fmt.Errorf("error preparing query AddMatchTeamResults: %w", err)
 	}
+	if q.closeParticipationEntryStmt, err = db.PrepareContext(ctx, closeParticipationEntry); err != nil {
+		return nil, fmt.Errorf("error preparing query CloseParticipationEntry: %w", err)
+	}
 	if q.decreaseMatchTeamConfirmedParticipantsStmt, err = db.PrepareContext(ctx, decreaseMatchTeamConfirmedParticipants); err != nil {
 		return nil, fmt.Errorf("error preparing query DecreaseMatchTeamConfirmedParticipants: %w", err)
 	}
@@ -239,6 +242,11 @@ func (q *Queries) Close() error {
 	if q.addMatchTeamResultsStmt != nil {
 		if cerr := q.addMatchTeamResultsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addMatchTeamResultsStmt: %w", cerr)
+		}
+	}
+	if q.closeParticipationEntryStmt != nil {
+		if cerr := q.closeParticipationEntryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing closeParticipationEntryStmt: %w", cerr)
 		}
 	}
 	if q.decreaseMatchTeamConfirmedParticipantsStmt != nil {
@@ -510,6 +518,7 @@ type Queries struct {
 	addMatchStreamerStmt                       *sql.Stmt
 	addMatchTeamStmt                           *sql.Stmt
 	addMatchTeamResultsStmt                    *sql.Stmt
+	closeParticipationEntryStmt                *sql.Stmt
 	decreaseMatchTeamConfirmedParticipantsStmt *sql.Stmt
 	deleteAllMatchModeratorsStmt               *sql.Stmt
 	deleteAllMatchStreamersStmt                *sql.Stmt
@@ -570,6 +579,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addMatchStreamerStmt:        q.addMatchStreamerStmt,
 		addMatchTeamStmt:            q.addMatchTeamStmt,
 		addMatchTeamResultsStmt:     q.addMatchTeamResultsStmt,
+		closeParticipationEntryStmt: q.closeParticipationEntryStmt,
 		decreaseMatchTeamConfirmedParticipantsStmt: q.decreaseMatchTeamConfirmedParticipantsStmt,
 		deleteAllMatchModeratorsStmt:               q.deleteAllMatchModeratorsStmt,
 		deleteAllMatchStreamersStmt:                q.deleteAllMatchStreamersStmt,

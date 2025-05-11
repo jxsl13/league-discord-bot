@@ -182,7 +182,6 @@ func New(
 			)
 
 			bot.wg.Add(1)
-
 			go timerutils.Loop(
 				bot.ctx,
 				minBackoff,
@@ -190,6 +189,18 @@ func New(
 				bot.asyncDeleteExpiredMatchChannel,
 				func() {
 					log.Println("channel delete routine stopped")
+					bot.wg.Done()
+				},
+			)
+
+			bot.wg.Add(1)
+			go timerutils.Loop(
+				bot.ctx,
+				minBackoff,
+				loopInterval,
+				bot.asyncCheckParticipationDeadline,
+				func() {
+					log.Println("participant deadline check routine stopped")
 					bot.wg.Done()
 				},
 			)
