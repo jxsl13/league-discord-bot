@@ -90,7 +90,7 @@ func FormatNotification(
 		for idx, s := range streamers {
 			userIDs = append(userIDs, s.UserID)
 
-			sb.WriteString("\t")
+			sb.WriteString("  ")
 			sb.WriteString(s.Mention())
 			if idx < len(streamers)-1 {
 				sb.WriteString("\n\n")

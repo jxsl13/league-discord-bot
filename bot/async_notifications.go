@@ -77,13 +77,13 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 			if err != nil {
 				return err
 			}
-
+			scheduledAt := time.Unix(match.ScheduledAt, 0)
 			for _, n := range notifications {
 
 				var msg api.SendMessageData
 				if n.CustomText == "" {
 					text := ""
-					untilMatch := time.Until(time.Unix(match.ScheduledAt, 0))
+					untilMatch := time.Until(scheduledAt)
 					if untilMatch >= time.Minute {
 						text = fmt.Sprintf("The match is starting in about %s. ", format.Duration(untilMatch))
 					} else {
@@ -126,7 +126,11 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 					return fmt.Errorf("error deleting notification: %w", err)
 				}
 
-				log.Printf("sent notification for match %s and notify_at: %s", channelID, time.Unix(n.NotifyAt, 0))
+				log.Printf("sent notification (%s) for match %s, scheduled at %s",
+					time.Unix(n.NotifyAt, 0),
+					channelID,
+					scheduledAt,
+				)
 			}
 		}
 

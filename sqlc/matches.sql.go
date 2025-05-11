@@ -20,6 +20,7 @@ INSERT INTO matches (
     scheduled_at,
     required_participants_per_team,
     participation_confirmation_until,
+    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -37,7 +38,8 @@ INSERT INTO matches (
     ?10,
     ?11,
     ?12,
-    ?13
+    ?13,
+    ?14
 )
 `
 
@@ -51,6 +53,7 @@ type AddMatchParams struct {
 	ScheduledAt                    int64  `db:"scheduled_at"`
 	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
 	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
+	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
 	CreatedAt                      int64  `db:"created_at"`
 	CreatedBy                      string `db:"created_by"`
 	UpdatedAt                      int64  `db:"updated_at"`
@@ -68,6 +71,7 @@ func (q *Queries) AddMatch(ctx context.Context, arg AddMatchParams) error {
 		arg.ScheduledAt,
 		arg.RequiredParticipantsPerTeam,
 		arg.ParticipationConfirmationUntil,
+		arg.ParticipationEntryClosed,
 		arg.CreatedAt,
 		arg.CreatedBy,
 		arg.UpdatedAt,
@@ -488,36 +492,41 @@ func (q *Queries) ListNowExpiredConfirmationDeadlines(ctx context.Context) ([]Li
 const rescheduleMatch = `-- name: RescheduleMatch :exec
 UPDATE matches
 SET
-    scheduled_at = ?1,
-    required_participants_per_team = ?2,
-    participation_confirmation_until = ?3,
-    participation_entry_closed = 0,
-    channel_accessible_at = ?4,
-    channel_accessible = ?5,
-    channel_delete_at = ?6,
-    updated_by = ?7
-WHERE channel_id = ?8
+    channel_accessible_at = ?1,
+    channel_delete_at = ?2,
+    message_id = ?3,
+    scheduled_at = ?4,
+    required_participants_per_team = ?5,
+    participation_confirmation_until = ?6,
+    participation_entry_closed = ?7,
+    updated_at = ?8,
+    updated_by = ?9
+WHERE channel_id = ?10
 `
 
 type RescheduleMatchParams struct {
+	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
+	ChannelDeleteAt                int64  `db:"channel_delete_at"`
+	MessageID                      string `db:"message_id"`
 	ScheduledAt                    int64  `db:"scheduled_at"`
 	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
 	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
-	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
-	ChannelAccessible              int64  `db:"channel_accessible"`
-	ChannelDeleteAt                int64  `db:"channel_delete_at"`
+	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
+	UpdatedAt                      int64  `db:"updated_at"`
 	UpdatedBy                      string `db:"updated_by"`
 	ChannelID                      string `db:"channel_id"`
 }
 
 func (q *Queries) RescheduleMatch(ctx context.Context, arg RescheduleMatchParams) error {
 	_, err := q.exec(ctx, q.rescheduleMatchStmt, rescheduleMatch,
+		arg.ChannelAccessibleAt,
+		arg.ChannelDeleteAt,
+		arg.MessageID,
 		arg.ScheduledAt,
 		arg.RequiredParticipantsPerTeam,
 		arg.ParticipationConfirmationUntil,
-		arg.ChannelAccessibleAt,
-		arg.ChannelAccessible,
-		arg.ChannelDeleteAt,
+		arg.ParticipationEntryClosed,
+		arg.UpdatedAt,
 		arg.UpdatedBy,
 		arg.ChannelID,
 	)

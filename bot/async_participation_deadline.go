@@ -37,10 +37,6 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 				return fmt.Errorf("error closing participation entry: %w", err)
 			}
 
-			if deadline.RequiredParticipantsPerTeam == 0 {
-
-			}
-
 			guildID, err := parse.GuildID(deadline.GuildID)
 			if err != nil {
 				return fmt.Errorf("error parsing guild ID: %w", err)

@@ -215,7 +215,13 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			channelAccessibleAt              = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ChannelAccessOffset)).Unix()
 			channelDeleteAt                  = scheduledAt.Add(time.Second * time.Duration(cfg.ChannelDeleteOffset)).Unix()
 			participatonConfirmationDeadline = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ParticipationConfirmOffset)).Unix()
+			participationEntryClosed         = int64(0)
 		)
+		if participantsPerTeam == 0 {
+			// if there are no participants required, set the participation entry closed
+			participationEntryClosed = 1
+			// which disables any participation checks for it
+		}
 
 		err = q.AddMatch(ctx, sqlc.AddMatchParams{
 			GuildID:                        guildID.String(),
@@ -226,6 +232,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			ScheduledAt:                    scheduledAt.Unix(),
 			RequiredParticipantsPerTeam:    participantsPerTeam,
 			ParticipationConfirmationUntil: max(nowUnix, participatonConfirmationDeadline),
+			ParticipationEntryClosed:       participationEntryClosed,
 			CreatedAt:                      nowUnix,
 			CreatedBy:                      userIDStr,
 			UpdatedAt:                      nowUnix,

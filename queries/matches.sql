@@ -9,6 +9,7 @@ INSERT INTO matches (
     scheduled_at,
     required_participants_per_team,
     participation_confirmation_until,
+    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -23,6 +24,7 @@ INSERT INTO matches (
     :scheduled_at,
     :required_participants_per_team,
     :participation_confirmation_until,
+    :participation_entry_closed,
     :created_at,
     :created_by,
     :updated_at,
@@ -58,13 +60,14 @@ ORDER BY scheduled_at ASC;
 -- name: RescheduleMatch :exec
 UPDATE matches
 SET
+    channel_accessible_at = :channel_accessible_at,
+    channel_delete_at = :channel_delete_at,
+    message_id = :message_id,
     scheduled_at = :scheduled_at,
     required_participants_per_team = :required_participants_per_team,
     participation_confirmation_until = :participation_confirmation_until,
-    participation_entry_closed = 0,
-    channel_accessible_at = :channel_accessible_at,
-    channel_accessible = :channel_accessible,
-    channel_delete_at = :channel_delete_at,
+    participation_entry_closed = :participation_entry_closed,
+    updated_at = :updated_at,
     updated_by = :updated_by
 WHERE channel_id = :channel_id;
 
@@ -115,8 +118,6 @@ UPDATE matches
 SET
     channel_accessible = :channel_accessible
 WHERE channel_id = :channel_id;
-
-
 
 
 -- name: ListNowDeletableChannels :many
