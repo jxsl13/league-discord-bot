@@ -28,7 +28,7 @@ type Config struct {
 	DiscordToken string `koanf:"discord.token" description:"discord bot token"`
 
 	ChannelDeleteOffset time.Duration `koanf:"guild.channel.delete.offset" description:"default time offset for deleting channels after a match"`
-	ChannelAccessOffset time.Duration `koanf:"guild.channel.access.offset" description:"default time offset for granting access to channels after a match"`
+	ChannelAccessOffset time.Duration `koanf:"guild.channel.access.offset" description:"default time offset for granting access to channels before a match"`
 	AsyncLoopInterval   time.Duration `koanf:"async.loop.interval" description:"interval for async loops, should be a small value e.g. 10s, 30s, 1m"`
 	BackoffMinDuration  time.Duration `koanf:"backoff.min.duration" description:"minimum duration for backoff upon api error, must be smaller than async loop interval e.g. 10s, 30s, 1m"`
 
