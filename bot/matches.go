@@ -40,6 +40,9 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 		if err != nil {
 			return err
 		}
+		if time.Until(scheduledAt) <= time.Minute {
+			return fmt.Errorf("invalid parameter 'scheduled_at': must be in the future: %s", discordutils.Timestamp(scheduledAt))
+		}
 
 		participantsPerTeam, err := options.MinInteger("participants_per_team", data.Options, 1)
 		if err != nil {
@@ -159,7 +162,7 @@ Please react with %[5]s to confirm your participation.
 				participantsPerTeam,
 				team1.Mention(),
 				team2.Mention(),
-				discordutils.ToDiscordTimestamp(scheduledAt),
+				discordutils.Timestamp(scheduledAt),
 				ReactionEmoji,
 			),
 		)
