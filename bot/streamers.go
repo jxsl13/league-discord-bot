@@ -33,7 +33,7 @@ func (b *Bot) listMatchStreamerUserIDs(ctx context.Context, q *sqlc.Queries, cha
 		}
 	}()
 
-	streamers, err := q.ListMatchStreamers(b.ctx, channelID.String())
+	streamers, err := q.ListMatchStreamers(ctx, channelID.String())
 	if err != nil {
 		return nil, fmt.Errorf("error getting match streamers: %w", err)
 	}

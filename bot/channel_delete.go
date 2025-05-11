@@ -1,8 +1,10 @@
 package bot
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/diamondburned/arikawa/v3/api"
@@ -24,94 +26,84 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 		channelIDStr = channelID.String()
 	)
 
-	q, err := b.Queries(b.ctx)
-	if err != nil {
-		log.Println("error getting queries:", err)
-		return
-	}
-	defer q.Close()
+	err := b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
+		if e.Type == discord.GuildText {
+			// just delete match channel if it matches the channel id
+			err := q.DeleteMatch(b.ctx, channelIDStr)
+			if err != nil {
+				return fmt.Errorf("error deleting match for channel %s: %w", channelID, err)
+			}
+			return nil
+		}
 
-	if e.Type == discord.GuildText {
-		// just delete match channel if it matches the channel id
-		err = q.DeleteMatch(b.ctx, channelIDStr)
+		// category channel -> guild config was modified
+
+		r, err := q.GetGuildConfigByCategory(b.ctx, channelIDStr)
 		if err != nil {
-			log.Printf("error deleting match for channel %s: %v", channelID, err)
-			return
+			if errors.Is(err, sql.ErrNoRows) {
+				// no config found, ignore
+				return nil
+			}
+			return fmt.Errorf("error getting guild config for category %s: %w", channelIDStr, err)
 		}
-		return
-	}
 
-	// category channel -> guild config was modified
-
-	r, err := q.GetGuildConfigByCategory(b.ctx, channelIDStr)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// no config found, ignore
-			return
+		if r.Enabled == 0 {
+			return errors.New("guild config is disabled, ignoring")
 		}
-		log.Printf("error getting guild config for category %s: %v", channelIDStr, err)
-		return
-	}
 
-	if r.Enabled == 0 {
-		log.Println("guild config is disabled, ignoring")
-		return
-	}
-
-	// config found
-	channels, err := b.state.Channels(guildID)
-	if err != nil {
-		log.Printf("error getting guild %s: %v", guildIDStr, err)
-		return
-	}
-	lastPos := discordutils.LastChannelPosition(channels)
-
-	matches, err := q.ListGuildMatches(b.ctx, guildIDStr)
-	if err != nil {
-		log.Printf("error getting matches for guild %s: %v", guildIDStr, err)
-		return
-	}
-
-	channelIDs := make([]discord.ChannelID, 0, len(matches))
-	for _, m := range matches {
-		id, err := discordutils.ParseChannelID(m.ChannelID)
+		// config found
+		channels, err := b.state.Channels(guildID)
 		if err != nil {
-			log.Println(err)
-			continue
+			return fmt.Errorf("error getting guild %s: %w", guildIDStr, err)
 		}
-		channelIDs = append(channelIDs, id)
-	}
+		lastPos := discordutils.LastChannelPosition(channels)
 
-	category, err := b.createMatchCategory(e.GuildID, lastPos)
-	if err != nil {
-		log.Printf("error creating category for guild %s: %v", e.GuildID.String(), err)
-
-		err = q.DisableGuild(b.ctx, guildIDStr)
+		matches, err := q.ListGuildMatches(b.ctx, guildIDStr)
 		if err != nil {
-			log.Printf("error disabling guild %s: %v", guildIDStr, err)
-			return
+			return fmt.Errorf("error getting matches for guild %s: %w", guildIDStr, err)
 		}
-		log.Printf("disabled guild %s", guildIDStr)
-		return
-	}
 
-	err = q.UpdateCategoryId(b.ctx, sqlc.UpdateCategoryIdParams{
-		GuildID:    guildIDStr,
-		CategoryID: category.ID.String(),
-	})
-	if err != nil {
-		log.Printf("error updating category id for guild %s: %v", guildIDStr, err)
-		return
-	}
+		channelIDs := make([]discord.ChannelID, 0, len(matches))
+		for _, m := range matches {
+			id, err := discordutils.ParseChannelID(m.ChannelID)
+			if err != nil {
+				return fmt.Errorf("error parsing channel ID %s: %w", m.ChannelID, err)
+			}
+			channelIDs = append(channelIDs, id)
+		}
 
-	// recreated category. look for all channels and move them back into the new category
-	for _, id := range channelIDs {
-		err = b.state.Client.ModifyChannel(id, api.ModifyChannelData{
-			CategoryID: category.ID,
+		category, err := b.createMatchCategory(e.GuildID, lastPos)
+		if err != nil {
+			err = fmt.Errorf("error creating category for guild %s: %v", e.GuildID.String(), err)
+
+			derr := q.DisableGuild(b.ctx, guildIDStr)
+			if derr != nil {
+				return fmt.Errorf("error disabling guild %s: %w (%w)", guildIDStr, derr, err)
+			}
+			return err
+		}
+
+		err = q.UpdateCategoryId(b.ctx, sqlc.UpdateCategoryIdParams{
+			GuildID:    guildIDStr,
+			CategoryID: category.ID.String(),
 		})
 		if err != nil {
-			log.Printf("error modifying channel %s: %v", id, err)
-			continue
+			return fmt.Errorf("error updating category id for guild %s: %w", guildIDStr, err)
 		}
+
+		// recreated category. look for all channels and move them back into the new category
+		for _, id := range channelIDs {
+			err = b.state.Client.ModifyChannel(id, api.ModifyChannelData{
+				CategoryID: category.ID,
+			})
+			if err != nil {
+				return fmt.Errorf("error modifying channel %s: %v", id, err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		log.Println(err)
 	}
 }

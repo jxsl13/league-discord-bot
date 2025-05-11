@@ -16,7 +16,7 @@ func (b *Bot) listMatchTeamRoleIDs(ctx context.Context, q *sqlc.Queries, channel
 		}
 	}()
 	// we need to give access to the corresponding teams
-	teams, err := q.ListMatchTeams(b.ctx, channelID.String())
+	teams, err := q.ListMatchTeams(ctx, channelID.String())
 	if err != nil {
 		return nil, fmt.Errorf("error getting match teams: %w", err)
 	}

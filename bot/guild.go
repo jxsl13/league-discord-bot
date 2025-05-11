@@ -61,53 +61,50 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 }
 
 func (b *Bot) handleAddGuild(e *gateway.GuildCreateEvent) {
-	q, err := b.Queries(b.ctx)
-	if err != nil {
-		log.Printf("error getting queries: %v", err)
-		return
-	}
-	defer q.Close()
+	err := b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
+		i, err := q.IsGuildEnabled(b.ctx, e.Guild.ID.String())
+		if err == nil && i != 0 {
+			log.Printf("guild %s is already enabled, skipping", e.Guild.ID.String())
+			return nil
+		} else if err == nil && i == 0 {
+			log.Printf("guild %s is disabled, skipping", e.Guild.ID.String())
+			return nil
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("error checking if guild %d is enabled: %v", e.ID, err)
+		}
+		// guild is unknown, so we need to add and initialize is
+		lastPos := discordutils.LastChannelPosition(e.Channels)
 
-	i, err := q.IsGuildEnabled(b.ctx, e.Guild.ID.String())
-	if err == nil && i != 0 {
-		log.Printf("guild %s is already enabled, skipping", e.Guild.ID.String())
-		return
-	} else if err == nil && i == 0 {
-		log.Printf("guild %s is disabled, skipping", e.Guild.ID.String())
-		return
-	} else if !errors.Is(err, sql.ErrNoRows) {
-		log.Printf("error checking if guild %d is enabled: %v", e.ID, err)
-		return
-	}
-	// guild is unknown, so we need to add and initialize is
-	lastPos := discordutils.LastChannelPosition(e.Channels)
+		category, err := b.createMatchCategory(e.Guild.ID, lastPos)
+		var (
+			created    = err == nil
+			categoryID = discord.NullChannelID
+		)
+		if created {
+			categoryID = category.ID
+		}
 
-	category, err := b.createMatchCategory(e.Guild.ID, lastPos)
-	var (
-		created    = err == nil
-		categoryID = discord.NullChannelID
-	)
-	if created {
-		categoryID = category.ID
-	}
+		// add default config
+		err = q.AddGuildConfig(b.ctx, sqlc.AddGuildConfigParams{
+			GuildID:             e.Guild.ID.String(),
+			Enabled:             boolToInt64(created),
+			CategoryID:          categoryID.String(),
+			ChannelAccessOffset: int64(b.defaultChannelAccessOffset / time.Second),
+			ChannelDeleteOffset: int64(b.defaultChannelDeleteOffset / time.Second),
+		})
+		if err != nil {
+			return fmt.Errorf("error adding guild %d (%s): %v", e.ID, e.Name, err)
+		}
 
-	// add default config
-	err = q.AddGuildConfig(b.ctx, sqlc.AddGuildConfigParams{
-		GuildID:             e.Guild.ID.String(),
-		Enabled:             boolToInt64(created),
-		CategoryID:          categoryID.String(),
-		ChannelAccessOffset: int64(b.defaultChannelAccessOffset / time.Second),
-		ChannelDeleteOffset: int64(b.defaultChannelDeleteOffset / time.Second),
+		if created {
+			log.Printf("added enabled guild %d (%s)", e.ID, e.Name)
+		} else {
+			log.Printf("added disabled guild %d (%s)", e.ID, e.Name)
+		}
+		return nil
 	})
 	if err != nil {
-		log.Printf("error adding guild %d (%s): %v", e.ID, e.Name, err)
-		return
-	}
-
-	if created {
-		log.Printf("added enabled guild %d (%s)", e.ID, e.Name)
-	} else {
-		log.Printf("added disabled guild %d (%s)", e.ID, e.Name)
+		log.Println(err)
 	}
 }
 

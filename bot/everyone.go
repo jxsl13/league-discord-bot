@@ -7,21 +7,6 @@ import (
 )
 
 func (b *Bot) everyone(guildID discord.GuildID) (discord.Role, error) {
-	/*
-		guild, err := b.state.Guild(guildID)
-		if err != nil {
-			return nil, fmt.Errorf("error getting guild %d: %w", guildID, err)
-		}
-
-		if len(guild.Roles) == 0 {
-			return nil, fmt.Errorf("guild %d has no roles", guildID)
-		}
-
-		everyone := guild.Roles[0]
-		if everyone.Name != "@everyone" {
-			return nil, fmt.Errorf("guild %d has no @everyone role", guildID)
-		}
-	*/
 	roles, err := b.state.Roles(guildID)
 	if err != nil {
 		return discord.Role{}, err

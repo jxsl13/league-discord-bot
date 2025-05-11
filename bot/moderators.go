@@ -17,7 +17,7 @@ func (b *Bot) listMatchModeratorUserIDs(ctx context.Context, q *sqlc.Queries, ch
 	}()
 
 	// we also need to get access to moderators
-	mods, err := q.ListMatchModerators(b.ctx, channelID.String())
+	mods, err := q.ListMatchModerators(ctx, channelID.String())
 	if err != nil {
 		return nil, fmt.Errorf("error getting match moderators: %w", err)
 	}

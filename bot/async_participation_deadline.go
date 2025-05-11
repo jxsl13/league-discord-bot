@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -83,86 +84,103 @@ func (b *Bot) asyncCheckParticipationDeadline() (d time.Duration, err error) {
 			log.Printf("error in check participation deadline routine: %v", err)
 		}
 	}()
-	q, err := b.Queries(b.ctx)
-	if err != nil {
-		return 0, err
-	}
-	defer q.Close()
-
-	deadline, err := q.NextParticipationConfirmationDeadline(b.ctx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// no matches scheduled, nothing to send
-			return 0, nil
-		}
-		return 0, fmt.Errorf("error getting next participation deadline: %w", err)
-	}
-
-	err = q.CloseParticipationEntry(b.ctx, deadline.ChannelID)
-	if err != nil {
-		return 0, fmt.Errorf("error closing participation entry: %w", err)
-	}
-
-	guildID, err := discordutils.ParseGuildID(deadline.GuildID)
-	if err != nil {
-		return 0, fmt.Errorf("error parsing guild ID: %w", err)
-	}
-
-	channelID, err := discordutils.ParseChannelID(deadline.ChannelID)
-	if err != nil {
-		return 0, fmt.Errorf("error parsing channel ID: %w", err)
-	}
-
-	msgID, err := discordutils.ParseMessageID(deadline.MessageID)
-	if err != nil {
-		return 0, fmt.Errorf("error parsing message ID: %w", err)
-	}
-
-	teamRoleIDs, err := b.listMatchTeamRoleIDs(b.ctx, q, channelID)
-	if err != nil {
-		return 0, err
-	}
-
-	modUserIds, err := b.listMatchModeratorUserIDs(b.ctx, q, channelID)
-	if err != nil {
-		return 0, err
-	}
-
-	streamers, err := b.listMatchStreamerUserIDs(b.ctx, q, channelID)
-	if err != nil {
-		return 0, err
-	}
-
-	participants, full, err := b.getConfirmedParticipants(
-		guildID,
-		channelID,
-		msgID,
-		deadline.RequiredParticipantsPerTeam,
-		teamRoleIDs...,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("error getting confirmed participants: %w", err)
-	}
-	if !full {
-		// disable match reminders, because we do not have enough participants
-		err = q.UpdateMatchReminderCount(b.ctx, sqlc.UpdateMatchReminderCountParams{
-			ChannelID:     deadline.ChannelID,
-			ReminderCount: b.reminder.DisabledIndex(),
-		})
+	err = b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
+		deadline, err := q.NextParticipationConfirmationDeadline(b.ctx)
 		if err != nil {
-			return 0, fmt.Errorf("error disabling match reminder: %w", err)
+			if errors.Is(err, sql.ErrNoRows) {
+				// no matches scheduled, nothing to send
+				return nil
+			}
+			return fmt.Errorf("error getting next participation deadline: %w", err)
+		}
+
+		err = q.CloseParticipationEntry(b.ctx, deadline.ChannelID)
+		if err != nil {
+			return fmt.Errorf("error closing participation entry: %w", err)
+		}
+
+		guildID, err := discordutils.ParseGuildID(deadline.GuildID)
+		if err != nil {
+			return fmt.Errorf("error parsing guild ID: %w", err)
+		}
+
+		channelID, err := discordutils.ParseChannelID(deadline.ChannelID)
+		if err != nil {
+			return fmt.Errorf("error parsing channel ID: %w", err)
+		}
+
+		msgID, err := discordutils.ParseMessageID(deadline.MessageID)
+		if err != nil {
+			return fmt.Errorf("error parsing message ID: %w", err)
+		}
+
+		teamRoleIDs, err := b.listMatchTeamRoleIDs(b.ctx, q, channelID)
+		if err != nil {
+			return err
+		}
+
+		modUserIds, err := b.listMatchModeratorUserIDs(b.ctx, q, channelID)
+		if err != nil {
+			return err
+		}
+
+		streamers, err := b.listMatchStreamerUserIDs(b.ctx, q, channelID)
+		if err != nil {
+			return err
+		}
+
+		participants, full, err := b.getConfirmedParticipants(
+			guildID,
+			channelID,
+			msgID,
+			deadline.RequiredParticipantsPerTeam,
+			teamRoleIDs...,
+		)
+		if err != nil {
+			return fmt.Errorf("error getting confirmed participants: %w", err)
+		}
+		if !full {
+			// disable match reminders, because we do not have enough participants
+			err = q.UpdateMatchReminderCount(b.ctx, sqlc.UpdateMatchReminderCountParams{
+				ChannelID:     deadline.ChannelID,
+				ReminderCount: b.reminder.DisabledIndex(),
+			})
+			if err != nil {
+				return fmt.Errorf("error disabling match reminder: %w", err)
+			}
+
+			content, am := FormatNotification(
+				fmt.Sprintf("Not enough participants for match %s, closing participation entry", channelID.Mention()),
+				"",
+				teamRoleIDs,
+				modUserIds,
+				streamers,
+				nil,
+			)
+
+			_, err := b.state.SendMessageComplex(
+				channelID,
+				api.SendMessageData{
+					Content:         content,
+					AllowedMentions: am,
+				},
+			)
+			if err != nil {
+				return fmt.Errorf("error sending message: %w", err)
+			}
+			return nil
 		}
 
 		content, am := FormatNotification(
-			fmt.Sprintf("Not enough participants for match %s, closing participation entry", channelID.Mention()),
+			"Closing participation entry, we have reached enough players play the match!",
 			"",
 			teamRoleIDs,
 			modUserIds,
 			streamers,
-			nil,
+			participants,
 		)
 
-		_, err := b.state.SendMessageComplex(
+		_, err = b.state.SendMessageComplex(
 			channelID,
 			api.SendMessageData{
 				Content:         content,
@@ -170,30 +188,14 @@ func (b *Bot) asyncCheckParticipationDeadline() (d time.Duration, err error) {
 			},
 		)
 		if err != nil {
-			return 0, fmt.Errorf("error sending message: %w", err)
+			return fmt.Errorf("error sending message: %w", err)
 		}
-		return 0, nil
-	}
-
-	content, am := FormatNotification(
-		"Closing participation entry, we have reached enough players play the match!",
-		"",
-		teamRoleIDs,
-		modUserIds,
-		streamers,
-		participants,
-	)
-
-	_, err = b.state.SendMessageComplex(
-		channelID,
-		api.SendMessageData{
-			Content:         content,
-			AllowedMentions: am,
-		},
-	)
+		return nil
+	})
 	if err != nil {
-		return 0, fmt.Errorf("error sending message: %w", err)
+		return 0, err
 	}
-
-	return 0, nil
+	// important that we do not overwrite this with 0,
+	// because it might have been set in the transaction closure
+	return d, nil
 }
