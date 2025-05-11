@@ -1,4 +1,4 @@
-package discordutils
+package parse
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ func Snowflake(id string) (discord.Snowflake, error) {
 	return s, nil
 }
 
-func ParseGuildID(id string) (discord.GuildID, error) {
+func GuildID(id string) (discord.GuildID, error) {
 	s, err := Snowflake(id)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse guild ID: %w", err)
@@ -22,7 +22,7 @@ func ParseGuildID(id string) (discord.GuildID, error) {
 	return discord.GuildID(s), nil
 }
 
-func ParseChannelID(id string) (discord.ChannelID, error) {
+func ChannelID(id string) (discord.ChannelID, error) {
 	s, err := Snowflake(id)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse channel ID: %w", err)
@@ -30,7 +30,7 @@ func ParseChannelID(id string) (discord.ChannelID, error) {
 	return discord.ChannelID(s), nil
 }
 
-func ParseMessageID(id string) (discord.MessageID, error) {
+func MessageID(id string) (discord.MessageID, error) {
 	s, err := Snowflake(id)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse message ID: %w", err)
@@ -38,7 +38,7 @@ func ParseMessageID(id string) (discord.MessageID, error) {
 	return discord.MessageID(s), nil
 }
 
-func ParseRoleID(id string) (discord.RoleID, error) {
+func RoleID(id string) (discord.RoleID, error) {
 	s, err := Snowflake(id)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse role ID: %w", err)
@@ -46,7 +46,7 @@ func ParseRoleID(id string) (discord.RoleID, error) {
 	return discord.RoleID(s), nil
 }
 
-func ParseUserID(id string) (discord.UserID, error) {
+func UserID(id string) (discord.UserID, error) {
 	s, err := Snowflake(id)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse user ID: %w", err)

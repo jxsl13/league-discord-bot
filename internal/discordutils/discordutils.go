@@ -1,10 +1,13 @@
 package discordutils
 
-import (
-	"fmt"
-	"time"
-)
+import "github.com/diamondburned/arikawa/v3/discord"
 
-func Timestamp(t time.Time) string {
-	return fmt.Sprintf("<t:%d:F>", t.UTC().Unix())
+func LastChannelPosition(channels []discord.Channel) int {
+	var lastPos int
+	for _, channel := range channels {
+		if channel.Position > lastPos {
+			lastPos = channel.Position
+		}
+	}
+	return lastPos + 1
 }

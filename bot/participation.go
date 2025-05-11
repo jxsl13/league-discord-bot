@@ -9,7 +9,7 @@ import (
 
 	"github.com/diamondburned/arikawa/v3/discord"
 	"github.com/diamondburned/arikawa/v3/gateway"
-	"github.com/jxs13/league-discord-bot/internal/discordutils"
+	"github.com/jxs13/league-discord-bot/internal/parse"
 	"github.com/jxs13/league-discord-bot/internal/sliceutils"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
@@ -131,7 +131,7 @@ func (b *Bot) handleRemoveParticipationReaction(e *gateway.MessageReactionRemove
 
 			teamRoleIDs := make([]discord.RoleID, 0, len(teams))
 			for _, team := range teams {
-				roleID, err := discordutils.ParseRoleID(team.RoleID)
+				roleID, err := parse.RoleID(team.RoleID)
 				if err != nil {
 					return fmt.Errorf("error parsing role ID %s: %v", team.RoleID, err)
 				}

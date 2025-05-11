@@ -11,6 +11,7 @@ import (
 	"github.com/diamondburned/arikawa/v3/discord"
 	"github.com/diamondburned/arikawa/v3/gateway"
 	"github.com/jxs13/league-discord-bot/internal/discordutils"
+	"github.com/jxs13/league-discord-bot/internal/parse"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
@@ -65,7 +66,7 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 
 		channelIDs := make([]discord.ChannelID, 0, len(matches))
 		for _, m := range matches {
-			id, err := discordutils.ParseChannelID(m.ChannelID)
+			id, err := parse.ChannelID(m.ChannelID)
 			if err != nil {
 				return fmt.Errorf("error parsing channel ID %s: %w", m.ChannelID, err)
 			}

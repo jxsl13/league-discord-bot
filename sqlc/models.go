@@ -15,6 +15,7 @@ type GuildConfig struct {
 	ChannelAccessOffset        int64  `db:"channel_access_offset"`
 	ChannelDeleteOffset        int64  `db:"channel_delete_offset"`
 	ParticipationConfirmOffset int64  `db:"participation_confirm_offset"`
+	NotificationOffsets        string `db:"notification_offsets"`
 	MatchCounter               int64  `db:"match_counter"`
 }
 
@@ -26,7 +27,6 @@ type Match struct {
 	ChannelDeleteAt                int64  `db:"channel_delete_at"`
 	MessageID                      string `db:"message_id"`
 	ScheduledAt                    int64  `db:"scheduled_at"`
-	ReminderCount                  int64  `db:"reminder_count"`
 	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
 	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
 	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
@@ -39,6 +39,16 @@ type Match struct {
 type Moderator struct {
 	ChannelID string `db:"channel_id"`
 	UserID    string `db:"user_id"`
+}
+
+type Notification struct {
+	ChannelID  string `db:"channel_id"`
+	NotifyAt   int64  `db:"notify_at"`
+	CustomText string `db:"custom_text"`
+	CreatedAt  int64  `db:"created_at"`
+	CreatedBy  string `db:"created_by"`
+	UpdatedAt  int64  `db:"updated_at"`
+	UpdatedBy  string `db:"updated_by"`
 }
 
 type RoleAccess struct {

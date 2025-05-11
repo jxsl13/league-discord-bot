@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/diamondburned/arikawa/v3/discord"
-	"github.com/jxs13/league-discord-bot/internal/discordutils"
+	"github.com/jxs13/league-discord-bot/internal/parse"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
@@ -24,7 +24,7 @@ func (b *Bot) listMatchModeratorUserIDs(ctx context.Context, q *sqlc.Queries, ch
 
 	modUserIDs := make([]discord.UserID, 0, len(mods))
 	for _, mod := range mods {
-		uid, err := discordutils.ParseUserID(mod.UserID)
+		uid, err := parse.UserID(mod.UserID)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing moderator role ID: %w", err)
 		}

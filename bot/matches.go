@@ -10,8 +10,9 @@ import (
 	"github.com/diamondburned/arikawa/v3/api/cmdroute"
 	"github.com/diamondburned/arikawa/v3/discord"
 	"github.com/diamondburned/arikawa/v3/utils/json/option"
-	"github.com/jxs13/league-discord-bot/internal/discordutils"
+	"github.com/jxs13/league-discord-bot/internal/format"
 	"github.com/jxs13/league-discord-bot/internal/options"
+	"github.com/jxs13/league-discord-bot/internal/parse"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
@@ -39,15 +40,12 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			return err
 		}
 
-		scheduledAt, err := options.TimeInLocation("scheduled_at", "location", data.Options) // TODO: change check to options.MinTime
+		scheduledAt, err := options.FutureTimeInLocation("scheduled_at", "location", time.Minute, data.Options) // TODO: change check to options.MinTime
 		if err != nil {
 			return err
 		}
-		if time.Until(scheduledAt) <= time.Minute {
-			return fmt.Errorf("invalid parameter 'scheduled_at': must be in the future: %s", discordutils.Timestamp(scheduledAt))
-		}
 
-		participantsPerTeam, err := options.MinInteger("participants_per_team", data.Options, 1)
+		participantsPerTeam, err := options.MinInteger("participants_per_team", data.Options, 0)
 		if err != nil {
 			return err
 		}
@@ -115,12 +113,17 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			return fmt.Errorf("%w, please contact the owner of the bot", err)
 		}
 
-		cid, err := discord.ParseSnowflake(cfg.CategoryID)
+		intervals, err := parse.ReminderIntervals(cfg.NotificationOffsets)
+		if err != nil {
+			err = fmt.Errorf("error parsing notification intervals: %w", err)
+			return fmt.Errorf("%w, please contact the owner of the bot", err)
+		}
+
+		categoryID, err := parse.ChannelID(cfg.CategoryID)
 		if err != nil {
 			err = fmt.Errorf("error parsing category ID: %w", err)
 			return fmt.Errorf("%w, please contact the owner of the bot", err)
 		}
-		categoryID := discord.ChannelID(cid)
 
 		cnt, err := q.NextMatchCounter(ctx, guildID.String())
 		if err != nil {
@@ -163,20 +166,24 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			}
 		}()
 
-		text := `Match between %[2]s and %[3]s (%[1]don%[1]d) scheduled at %[4]s
-
-Please react with %[5]s to confirm your participation.
-	`
+		var (
+			vs           = ""
+			confirmation = ""
+		)
+		if participantsPerTeam > 0 {
+			vs = fmt.Sprintf("%don%d", participantsPerTeam, participantsPerTeam)
+			confirmation = fmt.Sprintf("\n\nPlease react with %s to confirm your participation.", ReactionEmoji)
+		}
 
 		msg, err := b.state.SendMessage(
 			c.ID,
 			fmt.Sprintf(
-				text,
-				participantsPerTeam,
+				"Match between %s and %s %s scheduled at %s%s",
 				team1.Mention(),
 				team2.Mention(),
-				discordutils.Timestamp(scheduledAt),
-				ReactionEmoji,
+				vs,
+				format.DiscordTimestamp(scheduledAt),
+				confirmation,
 			),
 		)
 		if err != nil {
@@ -192,10 +199,13 @@ Please react with %[5]s to confirm your participation.
 			}
 		}()
 
-		err = b.state.React(c.ID, msg.ID, ReactionEmoji)
-		if err != nil {
-			err = fmt.Errorf("error reacting to message: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+		if participantsPerTeam > 0 {
+			// only react when there are required participants for the teams
+			err = b.state.React(c.ID, msg.ID, ReactionEmoji)
+			if err != nil {
+				err = fmt.Errorf("error reacting to message: %w", err)
+				return fmt.Errorf("%w, please contact the owner of the bot", err)
+			}
 		}
 
 		var (
@@ -266,12 +276,33 @@ Please react with %[5]s to confirm your participation.
 			}
 		}
 
+		// create notifications, can be disabled, in case there are not intervals defined in the guild config
+		for _, d := range intervals {
+			notifyAt := scheduledAt.Add(-1 * d)
+			if now.Sub(notifyAt) >= 0 {
+				// if the notification time is in the past, skip it
+				continue
+			}
+
+			err = q.AddNotification(ctx, sqlc.AddNotificationParams{
+				ChannelID:  channelIDStr,
+				NotifyAt:   notifyAt.Unix(),
+				CustomText: "", // will be automatically generate in case that it is not provided, which is not the case for default notifications
+				CreatedBy:  userIDStr,
+				CreatedAt:  nowUnix,
+				UpdatedBy:  userIDStr,
+				UpdatedAt:  nowUnix,
+			})
+			if err != nil {
+				return fmt.Errorf("error adding notification: %w", err)
+			}
+		}
+
 		resp = &api.InteractionResponseData{
 			Content: option.NewNullableString(
 				fmt.Sprintf(
-					"Created a new match channel: https://discord.com/channels/%s/%s",
-					guildID,
-					c.ID,
+					"Created a new match channel: %s",
+					c.ID.Mention(),
 				),
 			),
 			Flags:           discord.EphemeralMessage,
@@ -288,8 +319,4 @@ Please react with %[5]s to confirm your participation.
 	// because it is set in the transaction
 	return resp
 
-}
-
-func (b *Bot) commandRescheduleMatch(ctx context.Context, data cmdroute.CommandData) *api.InteractionResponseData {
-	return nil
 }

@@ -6,10 +6,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
-	"github.com/jxs13/league-discord-bot/internal/reminder"
+	"github.com/jxs13/league-discord-bot/internal/parse"
 )
 
 func New() *Config {
@@ -32,7 +31,7 @@ type Config struct {
 	AsyncLoopInterval  time.Duration `koanf:"async.loop.interval" description:"interval for async loops, should be a small value e.g. 10s, 30s, 1m"`
 	BackoffMinDuration time.Duration `koanf:"backoff.min.duration" description:"minimum duration for backoff upon api error, must be smaller than async loop interval e.g. 10s, 30s, 1m"`
 
-	ReminderIntervalsString string `koanf:"reminder.intervals" description:"list of reminder intervals to remind players before a match, e.g. 24h,1h,15m,5m,30s"`
+	ReminderIntervalsString string `koanf:"reminder.intervals" description:"default guild configuration list of reminder intervals to remind players before a match, e.g. 24h,1h,15m,5m,30s"`
 	ReminderIntervals       []time.Duration
 
 	ChannelAccessOffset        time.Duration `koanf:"guild.channel.access.offset" description:"default time offset for granting access to channels before a match"`
@@ -70,32 +69,20 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("backoff min duration must be smaller than or equal to async loop interval, e.g. 10s, 30s, 1m")
 	}
 
-	intervals := strings.Split(c.ReminderIntervalsString, ",")
-	if len(intervals) == 0 {
-		return fmt.Errorf("reminder intervals must be a comma separated list of durations containing at least a single duration, e.g. 24h,1h,15m,5m,30s")
-	}
-
 	err := ValidatableGuildConfig(c.ChannelAccessOffset, c.ParticipationConfirmOffset, c.ChannelDeleteOffset)
 	if err != nil {
 		return err
 	}
 
-	for _, rs := range intervals {
-		rs = strings.TrimSpace(rs)
-		d, err := time.ParseDuration(rs)
-		if err != nil {
-			return fmt.Errorf("error parsing reminder interval %s: %w", rs, err)
-		}
+	intervals, err := parse.ReminderIntervals(c.ReminderIntervalsString)
+	if err != nil {
+		return err
+	}
 
-		if d < time.Second {
-			return fmt.Errorf("reminder interval must be greater or equal to 1s, e.g. 5s, 5m, 15m, 1h, 24h")
-		}
-
+	for _, d := range intervals {
 		if d > c.ChannelAccessOffset {
 			return fmt.Errorf("reminder interval must be smaller than or equal to channel access offset, e.g. 24h, 1h30m: it does not make sense to notify users before they can access the match channel: interval: %s, access offset: %s", d, c.ChannelAccessOffset)
 		}
-
-		c.ReminderIntervals = append(c.ReminderIntervals, d)
 	}
 
 	dsn := filepath.ToSlash(c.DSN)
@@ -105,17 +92,12 @@ func (c *Config) Validate() error {
 	}
 
 	v := u.Query()
-	v["_txlock"] = []string{"immediate"} // "deferred" (the default), "immediate", or "exclusive"
+	if !v.Has("_txlock") {
+		v["_txlock"] = []string{"immediate"} // "deferred" (the default), "immediate", or "exclusive"
+	}
+
 	u.RawQuery = v.Encode()
 	dsn = u.String()
 	c.DSN = dsn
 	return nil
-}
-
-func (c *Config) Reminder() *reminder.Reminder {
-	r, err := reminder.New(c.ReminderIntervals...)
-	if err != nil {
-		panic(fmt.Errorf("error creating reminder: %w", err))
-	}
-	return r
 }

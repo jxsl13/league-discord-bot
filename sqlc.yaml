@@ -6,6 +6,7 @@ sql:
       "queries/guild_config.sql",
       "queries/matches.sql",
       "queries/moderators.sql",
+      "queries/notifications.sql",
       "queries/streamers.sql",
       "queries/teams.sql"
     ]

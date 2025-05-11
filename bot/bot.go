@@ -15,8 +15,8 @@ import (
 	"github.com/diamondburned/arikawa/v3/gateway"
 	"github.com/diamondburned/arikawa/v3/state"
 	"github.com/diamondburned/arikawa/v3/utils/json/option"
+	"github.com/jxs13/league-discord-bot/internal/format"
 	"github.com/jxs13/league-discord-bot/internal/parse"
-	"github.com/jxs13/league-discord-bot/internal/reminder"
 	"github.com/jxs13/league-discord-bot/internal/timerutils"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
@@ -28,7 +28,7 @@ type Bot struct {
 	userID discord.UserID
 	wg     *sync.WaitGroup
 
-	reminder                              *reminder.Reminder
+	defaultNotificationOffsets            []time.Duration
 	defaultChannelAccessOffset            time.Duration
 	defaulParticipationConfirmationOffset time.Duration
 	defaultChannelDeleteOffset            time.Duration
@@ -40,7 +40,7 @@ func New(
 	ctx context.Context,
 	token string,
 	db *sql.DB,
-	reminder *reminder.Reminder,
+	defaultNotificationOffsets []time.Duration,
 	minBackoff time.Duration,
 	loopInterval time.Duration,
 	defaultChannelAccessOffset time.Duration,
@@ -54,7 +54,7 @@ func New(
 		state:                                 s,
 		db:                                    db,
 		wg:                                    &sync.WaitGroup{},
-		reminder:                              reminder,
+		defaultNotificationOffsets:            defaultNotificationOffsets,
 		defaultChannelAccessOffset:            defaultChannelAccessOffset,
 		defaulParticipationConfirmationOffset: defaulParticipationConfirmationOffset,
 		defaultChannelDeleteOffset:            defaultChannelDeleteOffset,
@@ -81,7 +81,7 @@ func New(
 				bot.ctx,
 				minBackoff,
 				loopInterval,
-				bot.asyncGiveChannelAccess,
+				bot.asyncGrantChannelAccess,
 				func() {
 					log.Println("channel access routine stopped")
 					bot.wg.Done()
@@ -93,7 +93,7 @@ func New(
 				bot.ctx,
 				minBackoff,
 				loopInterval,
-				bot.asyncReminder,
+				bot.asyncNotifications,
 				func() {
 					log.Println("reminder routine stopped")
 					bot.wg.Done()
@@ -105,7 +105,7 @@ func New(
 				bot.ctx,
 				minBackoff,
 				loopInterval,
-				bot.asyncDeleteExpiredMatchChannel,
+				bot.asyncDeleteExpiredChannels,
 				func() {
 					log.Println("channel delete routine stopped")
 					bot.wg.Done()
@@ -169,6 +169,11 @@ func (b *Bot) Close() error {
 
 func (b *Bot) isMe(userID discord.UserID) bool {
 	return userID == b.userID
+}
+
+// Used as database value
+func (b *Bot) DefaultReminderIntervals() string {
+	return format.ReminderIntervals(b.defaultNotificationOffsets)
 }
 
 func errorResponse(err error) *api.InteractionResponseData {
@@ -245,6 +250,12 @@ func (b *Bot) overrideCommands() error {
 					MaxLength: option.NewInt(11),
 					Required:  true,
 				},
+				&discord.StringOption{
+					OptionName:  "notification_offsets",
+					Description: "List of default reminder intervals to remind players before a match, e.g. 24h,1h,15m,5m,30s",
+					MinLength:   option.NewInt(2),
+					Required:    true,
+				},
 			},
 		},
 		{
@@ -270,12 +281,6 @@ func (b *Bot) overrideCommands() error {
 					MinLength:   option.NewInt(1),
 					Required:    true,
 				},
-				&discord.IntegerOption{
-					OptionName:  "participants_per_team",
-					Description: "Number of participants per team. (3vs3 -> 3)",
-					Min:         option.NewInt(1),
-					Required:    true,
-				},
 				&discord.RoleOption{
 					OptionName:  "team_1_role",
 					Description: "Role of the first team.",
@@ -290,6 +295,12 @@ func (b *Bot) overrideCommands() error {
 					OptionName:  "moderator",
 					Description: "Moderator",
 					Required:    true,
+				},
+				&discord.IntegerOption{
+					OptionName:  "participants_per_team",
+					Description: "Number of required participants per team. (3on3 -> 3)",
+					Min:         option.NewInt(0),
+					Required:    false,
 				},
 				&discord.UserOption{
 					OptionName:  "streamer",

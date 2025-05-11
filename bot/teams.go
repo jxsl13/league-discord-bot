@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/diamondburned/arikawa/v3/discord"
-	"github.com/jxs13/league-discord-bot/internal/discordutils"
+	"github.com/jxs13/league-discord-bot/internal/parse"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
@@ -23,7 +23,7 @@ func (b *Bot) listMatchTeamRoleIDs(ctx context.Context, q *sqlc.Queries, channel
 
 	teamRoleIDs := make([]discord.RoleID, 0, len(teams))
 	for _, team := range teams {
-		rid, err := discordutils.ParseRoleID(team.RoleID)
+		rid, err := parse.RoleID(team.RoleID)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing team role ID: %w", err)
 		}

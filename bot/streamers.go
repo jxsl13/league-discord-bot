@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/diamondburned/arikawa/v3/discord"
-	"github.com/jxs13/league-discord-bot/internal/discordutils"
+	"github.com/jxs13/league-discord-bot/internal/parse"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
@@ -40,7 +40,7 @@ func (b *Bot) listMatchStreamerUserIDs(ctx context.Context, q *sqlc.Queries, cha
 
 	result := make([]Streamer, 0, len(streamers))
 	for _, streamer := range streamers {
-		uid, err := discordutils.ParseUserID(streamer.UserID)
+		uid, err := parse.UserID(streamer.UserID)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing streamer user ID: %w", err)
 		}

@@ -15,6 +15,7 @@ import (
 	"github.com/diamondburned/arikawa/v3/utils/json/option"
 	"github.com/jxs13/league-discord-bot/config"
 	"github.com/jxs13/league-discord-bot/internal/discordutils"
+	"github.com/jxs13/league-discord-bot/internal/format"
 	"github.com/jxs13/league-discord-bot/internal/options"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
@@ -42,6 +43,11 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 			return err
 		}
 
+		intervals, err := options.ReminderIntervals("notification_offsets", data.Options)
+		if err != nil {
+			return err
+		}
+
 		// reuse validation logic from config
 		err = config.ValidatableGuildConfig(accessOffset, confirmOffset, deleteOffset)
 		if err != nil {
@@ -53,6 +59,7 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 			ChannelDeleteOffset:        int64(deleteOffset / time.Second),
 			ChannelAccessOffset:        int64(accessOffset / time.Second),
 			ParticipationConfirmOffset: int64(confirmOffset / time.Second),
+			NotificationOffsets:        format.ReminderIntervals(intervals),
 		})
 		if err != nil {
 			err = fmt.Errorf("error adding guild config: %w", err)
@@ -106,6 +113,7 @@ func (b *Bot) handleAddGuild(e *gateway.GuildCreateEvent) {
 			CategoryID:          categoryID.String(),
 			ChannelAccessOffset: int64(b.defaultChannelAccessOffset / time.Second),
 			ChannelDeleteOffset: int64(b.defaultChannelDeleteOffset / time.Second),
+			NotificationOffsets: b.DefaultReminderIntervals(),
 		})
 		if err != nil {
 			return fmt.Errorf("error adding guild %d (%s): %v", e.ID, e.Name, err)

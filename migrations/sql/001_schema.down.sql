@@ -1,5 +1,5 @@
 
-
+DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS streamers;
 DROP TABLE IF EXISTS moderator_roles;
 DROP TABLE IF EXISTS teams;

@@ -26,7 +26,7 @@ func Time(in string) (time.Time, error) {
 func Location(location string) (*time.Location, error) {
 	l, err := time.LoadLocation(location)
 	if err != nil {
-		return nil, fmt.Errorf("invalid location (example: Europe/Germany): %s: %w", location, err)
+		return nil, fmt.Errorf("invalid location (example: Europe/Berlin): %s: %w", location, err)
 	}
 	return l, nil
 }

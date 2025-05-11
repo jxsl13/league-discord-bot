@@ -83,9 +83,9 @@ func (c *rootContext) PreRunE(cmd *cobra.Command) func(cmd *cobra.Command, args 
 				"PRAGMA foreign_keys = ON;",
 				"PRAGMA busy_timeout = 300000;",
 				"PRAGMA synchronous = NORMAL;",
-				"PRAGMA journal_size_limit = 67108864;",
-				"PRAGMA mmap_size = 134217728;",
-				"PRAGMA cache_size = 2000;",
+				// "PRAGMA journal_size_limit = 67108864;",
+				// "PRAGMA mmap_size = 134217728;",
+				// "PRAGMA cache_size = 2000;",
 			}, " ")
 		sqlite.RegisterConnectionHook(func(conn sqlite.ExecQuerierContext, dsn string) error {
 
@@ -120,7 +120,7 @@ func (c *rootContext) RunE(cmd *cobra.Command, args []string) error {
 		c.Context,
 		c.Config.DiscordToken,
 		c.DB,
-		c.Config.Reminder(),
+		c.Config.ReminderIntervals,
 		c.Config.BackoffMinDuration,
 		c.Config.AsyncLoopInterval,
 		c.Config.ChannelAccessOffset,

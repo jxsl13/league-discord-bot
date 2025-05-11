@@ -20,3 +20,17 @@ func TimeInLocation(datetimeName, locationName string, options discord.CommandIn
 	}
 	return t, nil
 }
+
+// The time must be in the future of at least abs(offset)
+func FutureTimeInLocation(datetimeName, locationName string, offset time.Duration, options discord.CommandInteractionOptions) (time.Time, error) {
+	t, err := TimeInLocation(datetimeName, locationName, options)
+	if err != nil {
+		return time.Time{}, err
+
+	}
+
+	if time.Until(t) < offset.Abs() {
+		return time.Time{}, fmt.Errorf("invalid parameter %q: must be at least %s in the future", datetimeName, offset)
+	}
+	return t, nil
+}

@@ -33,26 +33,35 @@ func FormatNotification(
 	userIDs := make([]discord.UserID, 0, len(modUserIDs)+len(streamers)+numParticipants)
 
 	if len(teamRoleIDs) > 0 {
-		sb.WriteString("Teams:\n")
-		for _, rid := range teamRoleIDs {
-			roleIDs = append(roleIDs, rid)
-			sb.WriteString("  ")
-			sb.WriteString(rid.Mention())
-			if len(participants) > 0 {
-				members, ok := participants[rid]
-				if ok {
-					sb.WriteString("\n")
-					for _, uid := range members {
-						userIDs = append(userIDs, uid)
+		sb.WriteString("Teams:")
 
-						sb.WriteString("")
-						sb.WriteString(uid.Mention())
-						sb.WriteString("\n")
-					}
-				}
-			}
+		if numParticipants > 0 {
 			sb.WriteString("\n")
 		}
+
+		for _, rid := range teamRoleIDs {
+			roleIDs = append(roleIDs, rid)
+			sb.WriteString(" ")
+			sb.WriteString(rid.Mention())
+
+			if numParticipants == 0 {
+				continue
+			}
+
+			members, ok := participants[rid]
+			if ok {
+				sb.WriteString("\n")
+				for _, uid := range members {
+					userIDs = append(userIDs, uid)
+
+					sb.WriteString(uid.Mention())
+					sb.WriteString("\n")
+				}
+			} else {
+				sb.WriteString("\n")
+			}
+		}
+		sb.WriteString("\n")
 	}
 
 	if len(modUserIDs) > 0 {
@@ -105,4 +114,44 @@ func FormatNotification(
 		AllowedMentions: allowedMentions,
 		Flags:           discord.SuppressEmbeds,
 	}
+}
+
+func AllowedMentions(
+	teamRoleIDs []discord.RoleID,
+	modUserIDs []discord.UserID,
+	streamers []Streamer,
+	participants map[discord.RoleID][]discord.UserID,
+) *api.AllowedMentions {
+
+	numParticipants := 0
+	for _, members := range participants {
+		numParticipants += len(members)
+	}
+
+	roleIDs := make([]discord.RoleID, 0, len(teamRoleIDs)+len(participants))
+	userIDs := make([]discord.UserID, 0, len(modUserIDs)+len(streamers)+numParticipants)
+
+	roleIDs = append(roleIDs, teamRoleIDs...)
+	userIDs = append(userIDs, modUserIDs...)
+
+	for _, s := range streamers {
+		userIDs = append(userIDs, s.UserID)
+	}
+
+	for rid, members := range participants {
+		roleIDs = append(roleIDs, rid)
+		userIDs = append(userIDs, members...)
+	}
+
+	slices.Sort(userIDs)
+	slices.Sort(roleIDs)
+	userIDs = slices.Compact(userIDs)
+	roleIDs = slices.Compact(roleIDs)
+
+	allowedMentions := &api.AllowedMentions{
+		Roles: roleIDs,
+		Users: userIDs,
+	}
+
+	return allowedMentions
 }
