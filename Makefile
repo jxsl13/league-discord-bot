@@ -1,7 +1,6 @@
 
 .PHONY: generate build
 
-
 build:
 	go build .
 
