@@ -14,7 +14,6 @@ import (
 
 func New() *Config {
 	return &Config{
-
 		DSN:                 filepath.Join(filepath.Dir(os.Args[0]), "league.db?_txlock=immediate"),
 		ChannelDeleteOffset: 24 * time.Hour,
 		ChannelAccessOffset: 7 * 24 * time.Hour,
