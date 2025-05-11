@@ -23,7 +23,7 @@ func (s Streamer) String() string {
 }
 
 func (s Streamer) Mention() string {
-	return s.UserID.Mention()
+	return s.String()
 }
 
 func (b *Bot) listMatchStreamerUserIDs(ctx context.Context, q *sqlc.Queries, channelID discord.ChannelID) (_ []Streamer, err error) {

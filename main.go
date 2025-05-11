@@ -78,9 +78,10 @@ func (c *rootContext) PreRunE(cmd *cobra.Command) func(cmd *cobra.Command, args 
 
 		pragmas := strings.Join(
 			[]string{
+				"PRAGMA journal_mode=WAL;",
 				"PRAGMA encoding = 'UTF-8';",
 				"PRAGMA foreign_keys = ON;",
-				"PRAGMA busy_timeout = 60000;",
+				"PRAGMA busy_timeout = 300000;",
 				"PRAGMA synchronous = NORMAL;",
 				"PRAGMA journal_size_limit = 67108864;",
 				"PRAGMA mmap_size = 134217728;",

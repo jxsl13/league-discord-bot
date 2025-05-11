@@ -8,16 +8,16 @@ import (
 	"log"
 	"time"
 
-	"github.com/diamondburned/arikawa/v3/api"
 	"github.com/jxs13/league-discord-bot/discordutils"
 	"github.com/jxs13/league-discord-bot/format"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
 func (b *Bot) asyncReminder(ctx context.Context) (d time.Duration, err error) {
+	started := time.Now()
 	defer func() {
 		if err != nil {
-			log.Printf("error in reminder routine: %v", err)
+			log.Printf("error in reminder routine (started at %s): %v", started, err)
 		}
 	}()
 	err = b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
@@ -65,7 +65,7 @@ func (b *Bot) asyncReminder(ctx context.Context) (d time.Duration, err error) {
 			text = "The match is starting now!"
 		}
 
-		content, allowedMentions := FormatNotification(
+		msg := FormatNotification(
 			text,
 			"",
 			teamRoleIDs,
@@ -73,11 +73,6 @@ func (b *Bot) asyncReminder(ctx context.Context) (d time.Duration, err error) {
 			streamers,
 			nil,
 		)
-
-		msg := api.SendMessageData{
-			Content:         content,
-			AllowedMentions: allowedMentions,
-		}
 
 		_, err = b.state.SendMessageComplex(channelID, msg)
 		if err != nil {

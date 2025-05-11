@@ -3,3 +3,6 @@
 __debug_bin*
 *.sqlite
 *.db
+*.db-shm
+.gitignore
+*.db-wal

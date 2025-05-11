@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,8 @@ import (
 
 func New() *Config {
 	return &Config{
-		DSN:                 filepath.Join(filepath.Dir(os.Args[0]), "league.db"),
+
+		DSN:                 filepath.Join(filepath.Dir(os.Args[0]), "league.db?_txlock=immediate"),
 		ChannelDeleteOffset: 24 * time.Hour,
 		ChannelAccessOffset: 7 * 24 * time.Hour,
 		AsyncLoopInterval:   15 * time.Second,
@@ -96,6 +98,19 @@ func (c *Config) Validate() error {
 		c.ReminderIntervals = append(c.ReminderIntervals, d)
 	}
 
+	dsn := filepath.ToSlash(c.DSN)
+
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return fmt.Errorf("error parsing DSN: %w", err)
+	}
+
+	v := u.Query()
+	v["_txlock"] = []string{"immediate"} // "deferred" (the default), "immediate", or "exclusive"
+
+	u.RawQuery = v.Encode()
+
+	c.DSN = u.String()
 	return nil
 }
 

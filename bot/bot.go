@@ -263,13 +263,16 @@ func errorResponse(err error) *api.InteractionResponseData {
 }
 
 func (b *Bot) TxQueries(ctx context.Context, f func(ctx context.Context, q *sqlc.Queries) error) error {
-	tx, err := b.db.BeginTx(ctx, nil)
+	tx, err := b.db.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+	})
 	if err != nil {
 		return err
 	}
 	defer func() {
 		err = errors.Join(err, tx.Rollback())
 	}()
+
 	d := sqlc.New(tx)
 	defer d.Close()
 	err = f(ctx, d)

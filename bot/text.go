@@ -15,7 +15,7 @@ func FormatNotification(
 	modUserIDs []discord.UserID,
 	streamers []Streamer,
 	participants map[discord.RoleID][]discord.UserID,
-) (string, *api.AllowedMentions) {
+) api.SendMessageData {
 
 	numParticipants := 0
 	for _, members := range participants {
@@ -84,11 +84,11 @@ func FormatNotification(
 			sb.WriteString("\t")
 			sb.WriteString(s.Mention())
 			if idx < len(streamers)-1 {
-				sb.WriteString("\n")
+				sb.WriteString("\n\n")
 			}
 		}
 	}
-
+	sb.WriteString("\n")
 	sb.WriteString(suffix)
 
 	slices.Sort(userIDs)
@@ -99,6 +99,10 @@ func FormatNotification(
 		Roles: slices.Compact(roleIDs),
 		Users: slices.Compact(userIDs),
 	}
-	// TODO: embed the url?
-	return content, allowedMentions
+
+	return api.SendMessageData{
+		Content:         content,
+		AllowedMentions: allowedMentions,
+		Flags:           discord.SuppressEmbeds,
+	}
 }

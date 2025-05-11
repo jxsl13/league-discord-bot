@@ -37,32 +37,50 @@ func (b *Bot) asyncGiveChannelAccess(ctx context.Context) (d time.Duration, err 
 			log.Printf("error in channel access routine: %v", err)
 		}
 	}()
-	err = b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
-		nextChan, err := q.NextAccessibleChannel(ctx)
+
+	var nextChan sqlc.NextAccessibleChannelRow
+	err = b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) (err error) {
+		nextChan, err = q.NextAccessibleChannel(ctx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				// no channels to give access to
-				return nil
+				return sql.ErrNoRows
 			}
 			return fmt.Errorf("error getting next accessible channel: %w", err)
 		}
-
-		var (
-			channelID    = nextChan.ChannelID
-			accessibleAt = time.Unix(nextChan.ChannelAccessibleAt, 0)
-		)
-
-		cid, err := discordutils.ParseChannelID(channelID)
-		if err != nil {
-			return err
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// no channels to give access to
+			return 0, nil
 		}
+		return 0, err
+	}
 
-		if time.Now().Before(accessibleAt) {
-			// give the routine a hint that we might need to wait less than the usual interval.
-			// or the usual interval in case the returned value it too large
-			d = time.Until(accessibleAt)
-			return nil
-		}
+	var (
+		channelID    = nextChan.ChannelID
+		accessibleAt = time.Unix(nextChan.ChannelAccessibleAt, 0)
+	)
+	// small sanity check
+	if time.Now().Before(accessibleAt) {
+		// give the routine a hint that we might need to wait less than the usual interval.
+		// or the usual interval in case the returned value it too large
+		d = time.Until(accessibleAt)
+		return 0, nil
+	}
+
+	cid, err := discordutils.ParseChannelID(channelID)
+	if err != nil {
+		return 0, err
+	}
+
+	c, err := b.state.Channel(cid)
+	if err != nil {
+		return 0, fmt.Errorf("error getting channel: %w", err)
+	}
+
+	err = b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
 
 		teamRoleIDs, err := b.listMatchTeamRoleIDs(ctx, q, cid)
 		if err != nil {
@@ -77,11 +95,6 @@ func (b *Bot) asyncGiveChannelAccess(ctx context.Context) (d time.Duration, err 
 		streamerUserIDs, err := b.listMatchStreamerUserIDs(ctx, q, cid)
 		if err != nil {
 			return err
-		}
-
-		c, err := b.state.Channel(cid)
-		if err != nil {
-			return fmt.Errorf("error getting channel: %w", err)
 		}
 
 		oldOverwrites := slices.Clone(c.Overwrites)

@@ -8,7 +8,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/diamondburned/arikawa/v3/api"
 	"github.com/diamondburned/arikawa/v3/discord"
 	"github.com/jxs13/league-discord-bot/discordutils"
 	"github.com/jxs13/league-discord-bot/internal/sliceutils"
@@ -149,7 +148,7 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 				return fmt.Errorf("error disabling match reminder: %w", err)
 			}
 
-			content, am := FormatNotification(
+			msg := FormatNotification(
 				fmt.Sprintf("Not enough participants for match %s, closing participation entry", channelID.Mention()),
 				"",
 				teamRoleIDs,
@@ -158,20 +157,14 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 				nil,
 			)
 
-			_, err := b.state.SendMessageComplex(
-				channelID,
-				api.SendMessageData{
-					Content:         content,
-					AllowedMentions: am,
-				},
-			)
+			_, err := b.state.SendMessageComplex(channelID, msg)
 			if err != nil {
 				return fmt.Errorf("error sending message: %w", err)
 			}
 			return nil
 		}
 
-		content, am := FormatNotification(
+		msg := FormatNotification(
 			"Closing participation entry, we have reached enough players play the match!",
 			"",
 			teamRoleIDs,
@@ -180,13 +173,7 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 			participants,
 		)
 
-		_, err = b.state.SendMessageComplex(
-			channelID,
-			api.SendMessageData{
-				Content:         content,
-				AllowedMentions: am,
-			},
-		)
+		_, err = b.state.SendMessageComplex(channelID, msg)
 		if err != nil {
 			return fmt.Errorf("error sending message: %w", err)
 		}
