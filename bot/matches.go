@@ -189,8 +189,9 @@ Please react with %[5]s to confirm your participation.
 			channelID    = c.ID
 			channelIDStr = channelID.String()
 			// epoch seconds
-			channelAccessibleAt = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ChannelAccessOffset)).Unix()
-			channelDeleteAt     = scheduledAt.Add(time.Second * time.Duration(cfg.ChannelDeleteOffset)).Unix()
+			channelAccessibleAt              = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ChannelAccessOffset)).Unix()
+			channelDeleteAt                  = scheduledAt.Add(time.Second * time.Duration(cfg.ChannelDeleteOffset)).Unix()
+			participatonConfirmationDeadline = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ParticipationConfirmOffset)).Unix()
 		)
 
 		err = q.AddMatch(ctx, sqlc.AddMatchParams{
@@ -201,7 +202,7 @@ Please react with %[5]s to confirm your participation.
 			MessageID:                      msg.ID.String(),
 			ScheduledAt:                    scheduledAt.Unix(),
 			RequiredParticipantsPerTeam:    participantsPerTeam,
-			ParticipationConfirmationUntil: max(nowUnix, scheduledAt.Add(-24*time.Hour).Unix()),
+			ParticipationConfirmationUntil: max(nowUnix, participatonConfirmationDeadline),
 			CreatedAt:                      nowUnix,
 			CreatedBy:                      userIDStr,
 			UpdatedAt:                      nowUnix,

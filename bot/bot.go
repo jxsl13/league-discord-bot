@@ -21,89 +21,6 @@ import (
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
-var userCommandList = []api.CreateCommandData{
-	{
-		Name:           "configure",
-		Description:    "Configure the bot for the current guild",
-		NoDMPermission: true,
-		DefaultMemberPermissions: discord.NewPermissions(
-			discord.PermissionAdministrator,
-		),
-		Options: []discord.CommandOption{
-			&discord.StringOption{
-				OptionName:  "channel_delete_offset",
-				Description: "Duration after match until channel deletion, at least 1h.",
-				MinLength:   option.NewInt(2),
-				MaxLength:   option.NewInt(11),
-				Required:    true,
-			},
-			&discord.StringOption{
-				OptionName:  "channel_access_offset",
-				Description: "Duration after match until channel deletion, at least 1h.",
-				MinLength:   option.NewInt(2),
-				MaxLength:   option.NewInt(11),
-				Required:    true,
-			},
-		},
-	},
-	{
-		Name:           "schedule-match",
-		Description:    "Schedule a new match",
-		NoDMPermission: true,
-		DefaultMemberPermissions: discord.NewPermissions(
-			discord.PermissionViewChannel,
-			discord.PermissionSendMessages,
-		),
-
-		Options: []discord.CommandOption{
-			&discord.StringOption{
-				OptionName:  "scheduled_at",
-				Description: fmt.Sprintf("Time when the match starts. Must be in this format: %s", parse.LayoutDateTimeWithZone),
-				MinLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
-				MaxLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
-				Required:    true,
-			},
-			&discord.StringOption{
-				OptionName:  "location",
-				Description: "Timzone location, e.g. Europe/Berlin.",
-				MinLength:   option.NewInt(1),
-				Required:    true,
-			},
-			&discord.IntegerOption{
-				OptionName:  "participants_per_team",
-				Description: "Number of participants per team. (3vs3 -> 3)",
-				Min:         option.NewInt(1),
-				Required:    true,
-			},
-			&discord.RoleOption{
-				OptionName:  "team_1_role",
-				Description: "Role of the first team.",
-				Required:    true,
-			},
-			&discord.RoleOption{
-				OptionName:  "team_2_role",
-				Description: "Role of the second team.",
-				Required:    true,
-			},
-			&discord.UserOption{
-				OptionName:  "moderator",
-				Description: "Moderator",
-				Required:    true,
-			},
-			&discord.UserOption{
-				OptionName:  "streamer",
-				Description: "Streamer",
-				Required:    false,
-			},
-			&discord.StringOption{
-				OptionName:  "stream_url",
-				Description: "url of the streamer or stream",
-				Required:    false,
-			},
-		},
-	},
-}
-
 type Bot struct {
 	ctx    context.Context
 	state  *state.State
@@ -111,9 +28,10 @@ type Bot struct {
 	userID discord.UserID
 	wg     *sync.WaitGroup
 
-	reminder                   *reminder.Reminder
-	defaultChannelAccessOffset time.Duration
-	defaultChannelDeleteOffset time.Duration
+	reminder                              *reminder.Reminder
+	defaultChannelAccessOffset            time.Duration
+	defaulParticipationConfirmationOffset time.Duration
+	defaultChannelDeleteOffset            time.Duration
 }
 
 // New requires a discord bot token and returns a Bot instance.
@@ -126,19 +44,20 @@ func New(
 	minBackoff time.Duration,
 	loopInterval time.Duration,
 	defaultChannelAccessOffset time.Duration,
+	defaulParticipationConfirmationOffset time.Duration,
 	defaultChannelDeleteOffset time.Duration,
 ) (*Bot, error) {
 
 	s := state.New("Bot " + token)
-
 	bot := &Bot{
-		ctx:                        ctx,
-		state:                      s,
-		db:                         db,
-		wg:                         &sync.WaitGroup{},
-		reminder:                   reminder,
-		defaultChannelAccessOffset: defaultChannelAccessOffset,
-		defaultChannelDeleteOffset: defaultChannelDeleteOffset,
+		ctx:                                   ctx,
+		state:                                 s,
+		db:                                    db,
+		wg:                                    &sync.WaitGroup{},
+		reminder:                              reminder,
+		defaultChannelAccessOffset:            defaultChannelAccessOffset,
+		defaulParticipationConfirmationOffset: defaulParticipationConfirmationOffset,
+		defaultChannelDeleteOffset:            defaultChannelDeleteOffset,
 	}
 
 	s.AddIntents(
@@ -224,14 +143,13 @@ func New(
 
 	// admin + user commands
 	r.AddFunc("schedule-match", bot.commandScheduleMatch)
-	r.AddFunc("reschedule-match", bot.commandRescheduleMatch)
+	// r.AddFunc("reschedule-match", bot.commandRescheduleMatch)
 
 	s.AddInteractionHandler(r)
 
-	// update user facing commands
-	err := cmdroute.OverwriteCommands(s, userCommandList)
+	err := bot.overrideCommands()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to override commands: %w", err)
 	}
 
 	return bot, nil
@@ -288,4 +206,105 @@ func (b *Bot) Queries(ctx context.Context) (q *sqlc.Queries, err error) {
 		return nil, err
 	}
 	return sqlc.New(conn), nil
+}
+
+func (b *Bot) overrideCommands() error {
+	var userCommandList = []api.CreateCommandData{
+		{
+			Name:           "configure",
+			Description:    "Configure the bot for the current guild",
+			NoDMPermission: true,
+			DefaultMemberPermissions: discord.NewPermissions(
+				discord.PermissionAdministrator,
+			),
+			Options: []discord.CommandOption{
+				&discord.StringOption{
+					OptionName:  "channel_access_offset",
+					Description: "How long before the match the user can access the mach channel, default: 168h",
+					MinLength:   option.NewInt(2),
+					MaxLength:   option.NewInt(11),
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName: "participation_confirm_offset",
+					Description: fmt.Sprintf(
+						"Deadline for participation confirmation, default: %s",
+						b.defaulParticipationConfirmationOffset,
+					),
+					MinLength: option.NewInt(2),
+					MaxLength: option.NewInt(11),
+					Required:  true,
+				},
+				&discord.StringOption{
+					OptionName: "channel_delete_offset",
+					Description: fmt.Sprintf(
+						"Deadline after the match when the channel is deleted, default: %s",
+						b.defaultChannelDeleteOffset,
+					),
+					MinLength: option.NewInt(2),
+					MaxLength: option.NewInt(11),
+					Required:  true,
+				},
+			},
+		},
+		{
+			Name:           "schedule-match",
+			Description:    "Schedule a new match",
+			NoDMPermission: true,
+			DefaultMemberPermissions: discord.NewPermissions(
+				discord.PermissionViewChannel,
+				discord.PermissionSendMessages,
+			),
+
+			Options: []discord.CommandOption{
+				&discord.StringOption{
+					OptionName:  "scheduled_at",
+					Description: fmt.Sprintf("Time when the match starts. Must be in this format: %s", parse.LayoutDateTimeWithZone),
+					MinLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
+					MaxLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName:  "location",
+					Description: "Timzone location, e.g. Europe/Berlin.",
+					MinLength:   option.NewInt(1),
+					Required:    true,
+				},
+				&discord.IntegerOption{
+					OptionName:  "participants_per_team",
+					Description: "Number of participants per team. (3vs3 -> 3)",
+					Min:         option.NewInt(1),
+					Required:    true,
+				},
+				&discord.RoleOption{
+					OptionName:  "team_1_role",
+					Description: "Role of the first team.",
+					Required:    true,
+				},
+				&discord.RoleOption{
+					OptionName:  "team_2_role",
+					Description: "Role of the second team.",
+					Required:    true,
+				},
+				&discord.UserOption{
+					OptionName:  "moderator",
+					Description: "Moderator",
+					Required:    true,
+				},
+				&discord.UserOption{
+					OptionName:  "streamer",
+					Description: "Streamer",
+					Required:    false,
+				},
+				&discord.StringOption{
+					OptionName:  "stream_url",
+					Description: "url of the streamer or stream",
+					Required:    false,
+				},
+			},
+		},
+	}
+
+	// update user facing commands
+	return cmdroute.OverwriteCommands(b.state, userCommandList)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/diamondburned/arikawa/v3/discord"
 	"github.com/diamondburned/arikawa/v3/gateway"
 	"github.com/diamondburned/arikawa/v3/utils/json/option"
+	"github.com/jxs13/league-discord-bot/config"
 	"github.com/jxs13/league-discord-bot/internal/discordutils"
 	"github.com/jxs13/league-discord-bot/internal/options"
 	"github.com/jxs13/league-discord-bot/sqlc"
@@ -26,7 +27,7 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 			return err
 		}
 
-		accessOffset, err := options.Duration("channel_access_offset", time.Hour, 730*time.Hour, data.Options)
+		accessOffset, err := options.Duration("channel_access_offset", time.Hour, 720*time.Hour, data.Options)
 		if err != nil {
 			return err
 		}
@@ -36,10 +37,22 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 			return err
 		}
 
+		confirmOffset, err := options.Duration("participation_confirm_offset", time.Hour, 720*time.Hour, data.Options)
+		if err != nil {
+			return err
+		}
+
+		// reuse validation logic from config
+		err = config.ValidatableGuildConfig(accessOffset, confirmOffset, deleteOffset)
+		if err != nil {
+			return err
+		}
+
 		err = q.UpdateGuildConfig(ctx, sqlc.UpdateGuildConfigParams{
-			GuildID:             data.Event.GuildID.String(),
-			ChannelDeleteOffset: int64(deleteOffset / time.Second),
-			ChannelAccessOffset: int64(accessOffset / time.Second),
+			GuildID:                    data.Event.GuildID.String(),
+			ChannelDeleteOffset:        int64(deleteOffset / time.Second),
+			ChannelAccessOffset:        int64(accessOffset / time.Second),
+			ParticipationConfirmOffset: int64(confirmOffset / time.Second),
 		})
 		if err != nil {
 			err = fmt.Errorf("error adding guild config: %w", err)

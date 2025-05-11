@@ -124,6 +124,7 @@ func (c *rootContext) RunE(cmd *cobra.Command, args []string) error {
 		c.Config.BackoffMinDuration,
 		c.Config.AsyncLoopInterval,
 		c.Config.ChannelAccessOffset,
+		c.Config.ParticipationConfirmOffset,
 		c.Config.ChannelDeleteOffset,
 	)
 	if err != nil {
