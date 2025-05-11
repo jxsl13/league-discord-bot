@@ -13,13 +13,13 @@ import (
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
-func (b *Bot) asyncDeleteExpiredMatchChannel() (d time.Duration, err error) {
+func (b *Bot) asyncDeleteExpiredMatchChannel(ctx context.Context) (d time.Duration, err error) {
 	defer func() {
 		if err != nil {
 			log.Printf("error in channel delete routine: %v", err)
 		}
 	}()
-	err = b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
+	err = b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
 		mc, err := q.NextMatchChannelDelete(ctx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {

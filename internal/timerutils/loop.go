@@ -9,7 +9,7 @@ func Loop(
 	ctx context.Context,
 	minBackoff time.Duration,
 	interval time.Duration,
-	f func() (time.Duration, error),
+	f func(ctx context.Context) (time.Duration, error),
 	deferredFunc ...func(),
 ) {
 	defer func() {
@@ -67,7 +67,7 @@ func Loop(
 					ResetTimer(timer, reset, &drained)
 				}()
 
-				reset, err = f()
+				reset, err = f(ctx)
 				if err != nil {
 					return
 				}

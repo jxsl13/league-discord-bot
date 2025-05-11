@@ -29,7 +29,7 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 	err := b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
 		if e.Type == discord.GuildText {
 			// just delete match channel if it matches the channel id
-			err := q.DeleteMatch(b.ctx, channelIDStr)
+			err := q.DeleteMatch(ctx, channelIDStr)
 			if err != nil {
 				return fmt.Errorf("error deleting match for channel %s: %w", channelID, err)
 			}
@@ -38,7 +38,7 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 
 		// category channel -> guild config was modified
 
-		r, err := q.GetGuildConfigByCategory(b.ctx, channelIDStr)
+		r, err := q.GetGuildConfigByCategory(ctx, channelIDStr)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				// no config found, ignore
@@ -58,7 +58,7 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 		}
 		lastPos := discordutils.LastChannelPosition(channels)
 
-		matches, err := q.ListGuildMatches(b.ctx, guildIDStr)
+		matches, err := q.ListGuildMatches(ctx, guildIDStr)
 		if err != nil {
 			return fmt.Errorf("error getting matches for guild %s: %w", guildIDStr, err)
 		}
@@ -76,14 +76,14 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 		if err != nil {
 			err = fmt.Errorf("error creating category for guild %s: %v", e.GuildID.String(), err)
 
-			derr := q.DisableGuild(b.ctx, guildIDStr)
+			derr := q.DisableGuild(ctx, guildIDStr)
 			if derr != nil {
 				return fmt.Errorf("error disabling guild %s: %w (%w)", guildIDStr, derr, err)
 			}
 			return err
 		}
 
-		err = q.UpdateCategoryId(b.ctx, sqlc.UpdateCategoryIdParams{
+		err = q.UpdateCategoryId(ctx, sqlc.UpdateCategoryIdParams{
 			GuildID:    guildIDStr,
 			CategoryID: category.ID.String(),
 		})

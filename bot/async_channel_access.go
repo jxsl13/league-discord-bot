@@ -31,7 +31,7 @@ var (
 		discord.PermissionUseSlashCommands
 )
 
-func (b *Bot) asyncGiveChannelAccess() (d time.Duration, err error) {
+func (b *Bot) asyncGiveChannelAccess(ctx context.Context) (d time.Duration, err error) {
 	defer func() {
 		if err != nil {
 			log.Printf("error in channel access routine: %v", err)

@@ -18,7 +18,7 @@ func TestErrorLoop(t *testing.T) {
 		cnt                = 0
 		allowedMaxDuration = (time.Duration(numBackoffs) * interval)
 	)
-	f := func() (time.Duration, error) {
+	f := func(ctx context.Context) (time.Duration, error) {
 		cnt++
 
 		if cnt == numBackoffs {
@@ -47,7 +47,7 @@ func TestSuccessLoop(t *testing.T) {
 		cnt                = 0
 		allowedMaxDuration = (time.Duration(numLoops) * interval)
 	)
-	f := func() (time.Duration, error) {
+	f := func(ctx context.Context) (time.Duration, error) {
 		cnt++
 
 		if cnt == numLoops {

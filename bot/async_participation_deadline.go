@@ -78,14 +78,14 @@ func (b *Bot) getConfirmedParticipants(
 	return buckets, full, nil
 }
 
-func (b *Bot) asyncCheckParticipationDeadline() (d time.Duration, err error) {
+func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Duration, err error) {
 	defer func() {
 		if err != nil {
 			log.Printf("error in check participation deadline routine: %v", err)
 		}
 	}()
-	err = b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
-		deadline, err := q.NextParticipationConfirmationDeadline(b.ctx)
+	err = b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
+		deadline, err := q.NextParticipationConfirmationDeadline(ctx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				// no matches scheduled, nothing to send
@@ -94,7 +94,7 @@ func (b *Bot) asyncCheckParticipationDeadline() (d time.Duration, err error) {
 			return fmt.Errorf("error getting next participation deadline: %w", err)
 		}
 
-		err = q.CloseParticipationEntry(b.ctx, deadline.ChannelID)
+		err = q.CloseParticipationEntry(ctx, deadline.ChannelID)
 		if err != nil {
 			return fmt.Errorf("error closing participation entry: %w", err)
 		}
@@ -114,17 +114,17 @@ func (b *Bot) asyncCheckParticipationDeadline() (d time.Duration, err error) {
 			return fmt.Errorf("error parsing message ID: %w", err)
 		}
 
-		teamRoleIDs, err := b.listMatchTeamRoleIDs(b.ctx, q, channelID)
+		teamRoleIDs, err := b.listMatchTeamRoleIDs(ctx, q, channelID)
 		if err != nil {
 			return err
 		}
 
-		modUserIds, err := b.listMatchModeratorUserIDs(b.ctx, q, channelID)
+		modUserIds, err := b.listMatchModeratorUserIDs(ctx, q, channelID)
 		if err != nil {
 			return err
 		}
 
-		streamers, err := b.listMatchStreamerUserIDs(b.ctx, q, channelID)
+		streamers, err := b.listMatchStreamerUserIDs(ctx, q, channelID)
 		if err != nil {
 			return err
 		}
@@ -141,7 +141,7 @@ func (b *Bot) asyncCheckParticipationDeadline() (d time.Duration, err error) {
 		}
 		if !full {
 			// disable match reminders, because we do not have enough participants
-			err = q.UpdateMatchReminderCount(b.ctx, sqlc.UpdateMatchReminderCountParams{
+			err = q.UpdateMatchReminderCount(ctx, sqlc.UpdateMatchReminderCountParams{
 				ChannelID:     deadline.ChannelID,
 				ReminderCount: b.reminder.DisabledIndex(),
 			})

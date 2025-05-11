@@ -36,7 +36,7 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 			return err
 		}
 
-		err = q.UpdateGuildConfig(b.ctx, sqlc.UpdateGuildConfigParams{
+		err = q.UpdateGuildConfig(ctx, sqlc.UpdateGuildConfigParams{
 			GuildID:             data.Event.GuildID.String(),
 			ChannelDeleteOffset: int64(deleteOffset / time.Second),
 			ChannelAccessOffset: int64(accessOffset / time.Second),
@@ -64,7 +64,7 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 
 func (b *Bot) handleAddGuild(e *gateway.GuildCreateEvent) {
 	err := b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
-		i, err := q.IsGuildEnabled(b.ctx, e.Guild.ID.String())
+		i, err := q.IsGuildEnabled(ctx, e.Guild.ID.String())
 		if err == nil && i != 0 {
 			log.Printf("guild %s is already enabled, skipping", e.Guild.ID.String())
 			return nil
@@ -87,7 +87,7 @@ func (b *Bot) handleAddGuild(e *gateway.GuildCreateEvent) {
 		}
 
 		// add default config
-		err = q.AddGuildConfig(b.ctx, sqlc.AddGuildConfigParams{
+		err = q.AddGuildConfig(ctx, sqlc.AddGuildConfigParams{
 			GuildID:             e.Guild.ID.String(),
 			Enabled:             boolToInt64(created),
 			CategoryID:          categoryID.String(),
@@ -141,17 +141,17 @@ func (b *Bot) createMatchCategory(guildID discord.GuildID, pos int) (*discord.Ch
 }
 
 func (b *Bot) handleRemoveGuild(e *gateway.GuildDeleteEvent) {
-	q, err := b.Queries(b.ctx)
-	if err != nil {
-		log.Printf("error getting queries: %v", err)
-		return
-	}
-	defer q.Close()
+	err := b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
+		err := q.DeleteGuildConfig(ctx, e.ID.String())
+		if err != nil {
+			return fmt.Errorf("error deleting guild %d: %v", e.ID, err)
+		}
+		log.Printf("deleted guild %d", e.ID)
+		return nil
+	})
 
-	err = q.DeleteGuildConfig(b.ctx, e.ID.String())
 	if err != nil {
-		log.Printf("error deleting guild %d: %v", e.ID, err)
-		return
+		fmt.Println(err)
 	}
-	log.Printf("deleted guild %d", e.ID)
+
 }

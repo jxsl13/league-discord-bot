@@ -14,14 +14,14 @@ import (
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
-func (b *Bot) asyncReminder() (d time.Duration, err error) {
+func (b *Bot) asyncReminder(ctx context.Context) (d time.Duration, err error) {
 	defer func() {
 		if err != nil {
 			log.Printf("error in reminder routine: %v", err)
 		}
 	}()
-	err = b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
-		r, err := q.NextMatchReminder(b.ctx, b.reminder.MaxIndex())
+	err = b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
+		r, err := q.NextMatchReminder(ctx, b.reminder.MaxIndex())
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				// no matches scheduled, nothing to send
@@ -42,17 +42,17 @@ func (b *Bot) asyncReminder() (d time.Duration, err error) {
 		}
 
 		// we need to remind the teams, moderators and streamers
-		teamRoleIDs, err := b.listMatchTeamRoleIDs(b.ctx, q, channelID)
+		teamRoleIDs, err := b.listMatchTeamRoleIDs(ctx, q, channelID)
 		if err != nil {
 			return err
 		}
 
-		modUserIDs, err := b.listMatchModeratorUserIDs(b.ctx, q, channelID)
+		modUserIDs, err := b.listMatchModeratorUserIDs(ctx, q, channelID)
 		if err != nil {
 			return err
 		}
 
-		streamers, err := b.listMatchStreamerUserIDs(b.ctx, q, channelID)
+		streamers, err := b.listMatchStreamerUserIDs(ctx, q, channelID)
 		if err != nil {
 			return err
 		}
@@ -86,7 +86,7 @@ func (b *Bot) asyncReminder() (d time.Duration, err error) {
 
 		// update reminder count
 		newReminderCount := max(r.ReminderCount+1, ridx+1)
-		err = q.UpdateMatchReminderCount(b.ctx, sqlc.UpdateMatchReminderCountParams{
+		err = q.UpdateMatchReminderCount(ctx, sqlc.UpdateMatchReminderCountParams{
 			ChannelID:     r.ChannelID,
 			ReminderCount: newReminderCount,
 		})

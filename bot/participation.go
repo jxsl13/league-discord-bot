@@ -25,7 +25,7 @@ func (b *Bot) handleAddParticipationReaction(e *gateway.MessageReactionAddEvent)
 	)
 
 	err := b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
-		m, err := q.GetMatch(b.ctx, channelID)
+		m, err := q.GetMatch(ctx, channelID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				// no match found, ignore
@@ -48,7 +48,7 @@ func (b *Bot) handleAddParticipationReaction(e *gateway.MessageReactionAddEvent)
 			ids = append(ids, rid.String())
 		}
 
-		teams, err := q.GetMatchTeamByRoles(b.ctx, sqlc.GetMatchTeamByRolesParams{
+		teams, err := q.GetMatchTeamByRoles(ctx, sqlc.GetMatchTeamByRolesParams{
 			ChannelID: channelID,
 			RoleIds:   ids,
 		})
@@ -73,7 +73,7 @@ func (b *Bot) handleAddParticipationReaction(e *gateway.MessageReactionAddEvent)
 
 		// found match, add user to match
 		err = q.IncreaseMatchTeamConfirmedParticipants(
-			b.ctx,
+			ctx,
 			sqlc.IncreaseMatchTeamConfirmedParticipantsParams{
 				ChannelID: team.ChannelID,
 				RoleID:    team.RoleID,
@@ -112,7 +112,7 @@ func (b *Bot) handleRemoveParticipationReaction(e *gateway.MessageReactionRemove
 			ids = append(ids, rid.String())
 		}
 
-		teams, err := q.GetMatchTeamByRoles(b.ctx, sqlc.GetMatchTeamByRolesParams{
+		teams, err := q.GetMatchTeamByRoles(ctx, sqlc.GetMatchTeamByRolesParams{
 			ChannelID: channelID.String(),
 			RoleIds:   ids,
 		})
@@ -149,7 +149,7 @@ func (b *Bot) handleRemoveParticipationReaction(e *gateway.MessageReactionRemove
 
 		// found match, remove user from match
 		err = q.DecreaseMatchTeamConfirmedParticipants(
-			b.ctx,
+			ctx,
 			sqlc.DecreaseMatchTeamConfirmedParticipantsParams{
 				ChannelID: channelID.String(),
 				RoleID:    teamRoleID,
