@@ -18,46 +18,48 @@ import (
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
-func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandData) *api.InteractionResponseData {
-	q, err := b.Queries(b.ctx)
-	if err != nil {
-		err = fmt.Errorf("error getting queries: %w", err)
-		log.Println(err)
-		return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))
-	}
-	defer q.Close()
+func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandData) (resp *api.InteractionResponseData) {
 
-	err = b.checkAccess(ctx, q, data.Event, ADMIN)
-	if err != nil {
-		return errorResponse(err)
-	}
+	err := b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
+		err := b.checkAccess(ctx, q, data.Event, ADMIN)
+		if err != nil {
+			return err
+		}
 
-	accessOffset, err := options.Duration("channel_access_offset", time.Hour, 730*time.Hour, data.Options)
-	if err != nil {
-		return errorResponse(err)
-	}
+		accessOffset, err := options.Duration("channel_access_offset", time.Hour, 730*time.Hour, data.Options)
+		if err != nil {
+			return err
+		}
 
-	deleteOffset, err := options.Duration("channel_delete_offset", time.Hour, 8760*time.Hour, data.Options)
-	if err != nil {
-		return errorResponse(err)
-	}
+		deleteOffset, err := options.Duration("channel_delete_offset", time.Hour, 8760*time.Hour, data.Options)
+		if err != nil {
+			return err
+		}
 
-	err = q.UpdateGuildConfig(b.ctx, sqlc.UpdateGuildConfigParams{
-		GuildID:             data.Event.GuildID.String(),
-		ChannelDeleteOffset: int64(deleteOffset / time.Second),
-		ChannelAccessOffset: int64(accessOffset / time.Second),
+		err = q.UpdateGuildConfig(b.ctx, sqlc.UpdateGuildConfigParams{
+			GuildID:             data.Event.GuildID.String(),
+			ChannelDeleteOffset: int64(deleteOffset / time.Second),
+			ChannelAccessOffset: int64(accessOffset / time.Second),
+		})
+		if err != nil {
+			err = fmt.Errorf("error adding guild config: %w", err)
+			log.Println(err)
+			return fmt.Errorf("%w, please contact the owner of the bot", err)
+		}
+
+		resp = &api.InteractionResponseData{
+			Content:         option.NewNullableString("Guild configuration was updated. New match schedules will be created accordingly"),
+			Flags:           discord.EphemeralMessage,
+			AllowedMentions: &api.AllowedMentions{ /* none */ },
+		}
+		return nil
 	})
 	if err != nil {
-		err = fmt.Errorf("error adding guild config: %w", err)
-		log.Println(err)
-		return errorResponse(fmt.Errorf("%w, please contact the owner of the bot", err))
+		return errorResponse(err)
 	}
 
-	return &api.InteractionResponseData{
-		Content:         option.NewNullableString("Guild configuration was updated. New match schedules will be created accordingly"),
-		Flags:           discord.EphemeralMessage,
-		AllowedMentions: &api.AllowedMentions{ /* none */ },
-	}
+	return resp
+
 }
 
 func (b *Bot) handleAddGuild(e *gateway.GuildCreateEvent) {
