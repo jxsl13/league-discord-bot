@@ -25,7 +25,7 @@ func (b *Bot) handleAddParticipationReaction(e *gateway.MessageReactionAddEvent)
 	)
 
 	err := b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
-		m, err := q.GetMatch(ctx, channelID)
+		req, err := q.GetParticipationRequirements(ctx, channelID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				// no match found, ignore
@@ -34,7 +34,7 @@ func (b *Bot) handleAddParticipationReaction(e *gateway.MessageReactionAddEvent)
 			return fmt.Errorf("error getting match for channel %s: %w", channelID, err)
 		}
 
-		if m.ParticipationEntryClosed == 1 {
+		if req.EntryClosed == 1 {
 			// removing emoji reacion, the participation entry is closed.
 			err = b.state.DeleteUserReaction(e.ChannelID, e.MessageID, e.UserID, ReactionEmoji)
 			if err != nil {

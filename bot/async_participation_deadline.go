@@ -15,39 +15,44 @@ import (
 )
 
 func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Duration, err error) {
-	log.Println("checking for expired participation deadlines")
+	log.Println("checking for due participation requirements requirements")
 	defer func() {
 		if err != nil {
-			log.Printf("error in check participation deadline routine: %v", err)
+			log.Printf("error in check participation requirements routine: %v", err)
 		}
 	}()
 	err = b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
-		deadlines, err := q.ListNowExpiredConfirmationDeadlines(ctx)
+		requirements, err := q.ListNowDueParticipationRequirements(ctx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				// no matches scheduled, nothing to send
 				return nil
 			}
-			return fmt.Errorf("error getting next participation deadline: %w", err)
+			return fmt.Errorf("error getting due participation requirements: %w", err)
 		}
 
-		for _, deadline := range deadlines {
-			err = q.CloseParticipationEntry(ctx, deadline.ChannelID)
+		for _, req := range requirements {
+			err = q.CloseParticipationEntry(ctx, req.ChannelID)
 			if err != nil {
 				return fmt.Errorf("error closing participation entry: %w", err)
 			}
 
-			guildID, err := parse.GuildID(deadline.GuildID)
+			match, err := q.GetMatch(ctx, req.ChannelID)
+			if err != nil {
+				return fmt.Errorf("error getting match: %w", err)
+			}
+
+			guildID, err := parse.GuildID(match.GuildID)
 			if err != nil {
 				return fmt.Errorf("error parsing guild ID: %w", err)
 			}
 
-			channelID, err := parse.ChannelID(deadline.ChannelID)
+			channelID, err := parse.ChannelID(match.ChannelID)
 			if err != nil {
 				return fmt.Errorf("error parsing channel ID: %w", err)
 			}
 
-			msgID, err := parse.MessageID(deadline.MessageID)
+			msgID, err := parse.MessageID(match.MessageID)
 			if err != nil {
 				return fmt.Errorf("error parsing message ID: %w", err)
 			}
@@ -71,15 +76,16 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 				guildID,
 				channelID,
 				msgID,
-				deadline.RequiredParticipantsPerTeam,
+				req.ParticipantsPerTeam,
 				teamRoleIDs...,
 			)
 			if err != nil {
 				return fmt.Errorf("error getting confirmed participants: %w", err)
 			}
 			if !full {
-				// delete all match notifiactions
-				err = q.DeleteMatchNotifications(ctx, deadline.ChannelID)
+				// delete future all match notifiactions, because the requirements were not met
+				// so the match will not take place
+				err = q.DeleteMatchNotifications(ctx, match.ChannelID)
 				if err != nil {
 					return fmt.Errorf("error deleting match notifications: %w", err)
 				}
@@ -114,7 +120,7 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 				return fmt.Errorf("error sending message: %w", err)
 			}
 
-			log.Printf("closed participation entry for match %s, deadline: %s", channelID, time.Unix(deadline.ParticipationConfirmationUntil, 0))
+			log.Printf("closed participation entry for match %s, deadline at: %s", channelID, time.Unix(req.DeadlineAt, 0))
 		}
 		return nil
 	})
@@ -164,6 +170,7 @@ func (b *Bot) getConfirmedParticipants(
 		if b.isMe(u.ID) {
 			continue
 		}
+
 		member, err := b.state.Member(guildID, u.ID)
 		if err != nil {
 			return nil, false, fmt.Errorf("error getting member: %w", err)

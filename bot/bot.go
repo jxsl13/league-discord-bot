@@ -145,6 +145,11 @@ func New(
 	r.AddFunc("schedule-match", bot.commandScheduleMatch)
 	// r.AddFunc("reschedule-match", bot.commandRescheduleMatch)
 
+	r.AddFunc("notification-list", bot.commandNotificationsList)
+	r.AddFunc("notification-delete", bot.commandNotificationsDelete)
+	r.AddFunc("notification-add", bot.commandNotificationsAdd)
+	// TODO: timezone auto completion: r.AddAutocompleterFunc()
+
 	s.AddInteractionHandler(r)
 
 	err := bot.overrideCommands()
@@ -310,6 +315,82 @@ func (b *Bot) overrideCommands() error {
 				&discord.StringOption{
 					OptionName:  "stream_url",
 					Description: "url of the streamer or stream",
+					Required:    false,
+				},
+			},
+		},
+		{
+			Name:           "notification-list",
+			Description:    "list all notifications for a specific match",
+			NoDMPermission: true,
+			DefaultMemberPermissions: discord.NewPermissions(
+				discord.PermissionViewChannel,
+				discord.PermissionSendMessages,
+			),
+
+			Options: []discord.CommandOption{
+				&discord.ChannelOption{
+					OptionName:  "match_channel",
+					Description: "Match channel for which to get the notifications",
+					Required:    true,
+				},
+			},
+		},
+		{
+			Name:           "notification-delete",
+			Description:    "delete a notification from the notification list",
+			NoDMPermission: true,
+			DefaultMemberPermissions: discord.NewPermissions(
+				discord.PermissionViewChannel,
+				discord.PermissionSendMessages,
+			),
+
+			Options: []discord.CommandOption{
+				&discord.ChannelOption{
+					OptionName:  "match_channel",
+					Description: "Match channel for which to get the notification",
+					Required:    true,
+				},
+				&discord.IntegerOption{
+					OptionName:  "list_number",
+					Description: "Notification number in the notification list",
+					Required:    true,
+					Min:         option.NewInt(1),
+					Max:         option.NewInt(50),
+				},
+			},
+		},
+		{
+			Name:           "notification-add",
+			Description:    "add a new generated or custom notification to a match channel.",
+			NoDMPermission: true,
+			DefaultMemberPermissions: discord.NewPermissions(
+				discord.PermissionViewChannel,
+				discord.PermissionSendMessages,
+			),
+
+			Options: []discord.CommandOption{
+				&discord.ChannelOption{
+					OptionName:  "match_channel",
+					Description: "Match channel for which to get the notification",
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName:  "notify_at",
+					Description: fmt.Sprintf("Time when the notification is triggered. Must be in this format: %s", parse.LayoutDateTimeWithZone),
+					MinLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
+					MaxLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName:  "location",
+					Description: "Timzone location, e.g. Europe/Berlin.",
+					MinLength:   option.NewInt(1),
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName:  "custom_text",
+					Description: "Leave empty for a default generated message",
 					Required:    false,
 				},
 			},

@@ -37,6 +37,11 @@ FROM notifications
 WHERE channel_id = :channel_id
 ORDER BY notify_at ASC;
 
+-- name: CountNotifications :one
+SELECT COUNT(*)
+FROM notifications
+WHERE channel_id = :channel_id;
+
 -- name: ListDueNotifications :many
 SELECT
     channel_id,

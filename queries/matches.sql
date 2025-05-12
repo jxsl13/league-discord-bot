@@ -7,9 +7,6 @@ INSERT INTO matches (
     channel_delete_at,
     message_id,
     scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -22,9 +19,6 @@ INSERT INTO matches (
     :channel_delete_at,
     :message_id,
     :scheduled_at,
-    :required_participants_per_team,
-    :participation_confirmation_until,
-    :participation_entry_closed,
     :created_at,
     :created_by,
     :updated_at,
@@ -46,9 +40,6 @@ SELECT
     channel_delete_at,
     message_id,
     scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -64,9 +55,6 @@ SET
     channel_delete_at = :channel_delete_at,
     message_id = :message_id,
     scheduled_at = :scheduled_at,
-    required_participants_per_team = :required_participants_per_team,
-    participation_confirmation_until = :participation_confirmation_until,
-    participation_entry_closed = :participation_entry_closed,
     updated_at = :updated_at,
     updated_by = :updated_by
 WHERE channel_id = :channel_id;
@@ -81,9 +69,6 @@ SELECT
     channel_delete_at,
     message_id,
     scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -100,9 +85,6 @@ SELECT
     channel_delete_at,
     message_id,
     scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -110,8 +92,7 @@ SELECT
 FROM matches
 WHERE matches.channel_accessible = 0
 AND matches.channel_accessible_at <= unixepoch('now')
-ORDER BY channel_accessible_at ASC
-LIMIT 1;
+ORDER BY channel_accessible_at ASC;
 
 -- name: UpdateMatchChannelAccessibility :exec
 UPDATE matches
@@ -129,9 +110,6 @@ SELECT
     channel_delete_at,
     message_id,
     scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -140,32 +118,6 @@ FROM matches
 WHERE matches.channel_delete_at <= unixepoch('now')
 ORDER BY channel_delete_at ASC;
 
--- name: ListNowExpiredConfirmationDeadlines :many
-SELECT
-    guild_id,
-    channel_id,
-    channel_accessible_at,
-    channel_accessible,
-    channel_delete_at,
-    message_id,
-    scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
-    created_at,
-    created_by,
-    updated_at,
-    updated_by
-FROM matches
-WHERE matches.participation_confirmation_until <= unixepoch('now')
-AND matches.participation_entry_closed = 0
-ORDER BY participation_confirmation_until ASC;
-
--- name: CloseParticipationEntry :exec
-UPDATE matches
-SET
-    participation_entry_closed = 1
-WHERE channel_id = :channel_id;
 
 -- name: CountMatches :one
 SELECT COUNT(channel_id) AS count

@@ -18,9 +18,6 @@ INSERT INTO matches (
     channel_delete_at,
     message_id,
     scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -36,28 +33,22 @@ INSERT INTO matches (
     ?8,
     ?9,
     ?10,
-    ?11,
-    ?12,
-    ?13,
-    ?14
+    ?11
 )
 `
 
 type AddMatchParams struct {
-	GuildID                        string `db:"guild_id"`
-	ChannelID                      string `db:"channel_id"`
-	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
-	ChannelAccessible              int64  `db:"channel_accessible"`
-	ChannelDeleteAt                int64  `db:"channel_delete_at"`
-	MessageID                      string `db:"message_id"`
-	ScheduledAt                    int64  `db:"scheduled_at"`
-	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
-	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
-	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
-	CreatedAt                      int64  `db:"created_at"`
-	CreatedBy                      string `db:"created_by"`
-	UpdatedAt                      int64  `db:"updated_at"`
-	UpdatedBy                      string `db:"updated_by"`
+	GuildID             string `db:"guild_id"`
+	ChannelID           string `db:"channel_id"`
+	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
+	ChannelAccessible   int64  `db:"channel_accessible"`
+	ChannelDeleteAt     int64  `db:"channel_delete_at"`
+	MessageID           string `db:"message_id"`
+	ScheduledAt         int64  `db:"scheduled_at"`
+	CreatedAt           int64  `db:"created_at"`
+	CreatedBy           string `db:"created_by"`
+	UpdatedAt           int64  `db:"updated_at"`
+	UpdatedBy           string `db:"updated_by"`
 }
 
 func (q *Queries) AddMatch(ctx context.Context, arg AddMatchParams) error {
@@ -69,26 +60,11 @@ func (q *Queries) AddMatch(ctx context.Context, arg AddMatchParams) error {
 		arg.ChannelDeleteAt,
 		arg.MessageID,
 		arg.ScheduledAt,
-		arg.RequiredParticipantsPerTeam,
-		arg.ParticipationConfirmationUntil,
-		arg.ParticipationEntryClosed,
 		arg.CreatedAt,
 		arg.CreatedBy,
 		arg.UpdatedAt,
 		arg.UpdatedBy,
 	)
-	return err
-}
-
-const closeParticipationEntry = `-- name: CloseParticipationEntry :exec
-UPDATE matches
-SET
-    participation_entry_closed = 1
-WHERE channel_id = ?1
-`
-
-func (q *Queries) CloseParticipationEntry(ctx context.Context, channelID string) error {
-	_, err := q.exec(ctx, q.closeParticipationEntryStmt, closeParticipationEntry, channelID)
 	return err
 }
 
@@ -132,9 +108,6 @@ SELECT
     channel_delete_at,
     message_id,
     scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -144,20 +117,17 @@ WHERE channel_id = ?1
 `
 
 type GetMatchRow struct {
-	GuildID                        string `db:"guild_id"`
-	ChannelID                      string `db:"channel_id"`
-	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
-	ChannelAccessible              int64  `db:"channel_accessible"`
-	ChannelDeleteAt                int64  `db:"channel_delete_at"`
-	MessageID                      string `db:"message_id"`
-	ScheduledAt                    int64  `db:"scheduled_at"`
-	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
-	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
-	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
-	CreatedAt                      int64  `db:"created_at"`
-	CreatedBy                      string `db:"created_by"`
-	UpdatedAt                      int64  `db:"updated_at"`
-	UpdatedBy                      string `db:"updated_by"`
+	GuildID             string `db:"guild_id"`
+	ChannelID           string `db:"channel_id"`
+	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
+	ChannelAccessible   int64  `db:"channel_accessible"`
+	ChannelDeleteAt     int64  `db:"channel_delete_at"`
+	MessageID           string `db:"message_id"`
+	ScheduledAt         int64  `db:"scheduled_at"`
+	CreatedAt           int64  `db:"created_at"`
+	CreatedBy           string `db:"created_by"`
+	UpdatedAt           int64  `db:"updated_at"`
+	UpdatedBy           string `db:"updated_by"`
 }
 
 func (q *Queries) GetMatch(ctx context.Context, channelID string) (GetMatchRow, error) {
@@ -171,9 +141,6 @@ func (q *Queries) GetMatch(ctx context.Context, channelID string) (GetMatchRow, 
 		&i.ChannelDeleteAt,
 		&i.MessageID,
 		&i.ScheduledAt,
-		&i.RequiredParticipantsPerTeam,
-		&i.ParticipationConfirmationUntil,
-		&i.ParticipationEntryClosed,
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.UpdatedAt,
@@ -191,9 +158,6 @@ SELECT
     channel_delete_at,
     message_id,
     scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -204,20 +168,17 @@ ORDER BY scheduled_at ASC
 `
 
 type ListGuildMatchesRow struct {
-	GuildID                        string `db:"guild_id"`
-	ChannelID                      string `db:"channel_id"`
-	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
-	ChannelAccessible              int64  `db:"channel_accessible"`
-	ChannelDeleteAt                int64  `db:"channel_delete_at"`
-	MessageID                      string `db:"message_id"`
-	ScheduledAt                    int64  `db:"scheduled_at"`
-	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
-	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
-	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
-	CreatedAt                      int64  `db:"created_at"`
-	CreatedBy                      string `db:"created_by"`
-	UpdatedAt                      int64  `db:"updated_at"`
-	UpdatedBy                      string `db:"updated_by"`
+	GuildID             string `db:"guild_id"`
+	ChannelID           string `db:"channel_id"`
+	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
+	ChannelAccessible   int64  `db:"channel_accessible"`
+	ChannelDeleteAt     int64  `db:"channel_delete_at"`
+	MessageID           string `db:"message_id"`
+	ScheduledAt         int64  `db:"scheduled_at"`
+	CreatedAt           int64  `db:"created_at"`
+	CreatedBy           string `db:"created_by"`
+	UpdatedAt           int64  `db:"updated_at"`
+	UpdatedBy           string `db:"updated_by"`
 }
 
 func (q *Queries) ListGuildMatches(ctx context.Context, guildID string) ([]ListGuildMatchesRow, error) {
@@ -237,9 +198,6 @@ func (q *Queries) ListGuildMatches(ctx context.Context, guildID string) ([]ListG
 			&i.ChannelDeleteAt,
 			&i.MessageID,
 			&i.ScheduledAt,
-			&i.RequiredParticipantsPerTeam,
-			&i.ParticipationConfirmationUntil,
-			&i.ParticipationEntryClosed,
 			&i.CreatedAt,
 			&i.CreatedBy,
 			&i.UpdatedAt,
@@ -267,9 +225,6 @@ SELECT
     channel_delete_at,
     message_id,
     scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -278,24 +233,20 @@ FROM matches
 WHERE matches.channel_accessible = 0
 AND matches.channel_accessible_at <= unixepoch('now')
 ORDER BY channel_accessible_at ASC
-LIMIT 1
 `
 
 type ListNowAccessibleChannelsRow struct {
-	GuildID                        string `db:"guild_id"`
-	ChannelID                      string `db:"channel_id"`
-	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
-	ChannelAccessible              int64  `db:"channel_accessible"`
-	ChannelDeleteAt                int64  `db:"channel_delete_at"`
-	MessageID                      string `db:"message_id"`
-	ScheduledAt                    int64  `db:"scheduled_at"`
-	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
-	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
-	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
-	CreatedAt                      int64  `db:"created_at"`
-	CreatedBy                      string `db:"created_by"`
-	UpdatedAt                      int64  `db:"updated_at"`
-	UpdatedBy                      string `db:"updated_by"`
+	GuildID             string `db:"guild_id"`
+	ChannelID           string `db:"channel_id"`
+	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
+	ChannelAccessible   int64  `db:"channel_accessible"`
+	ChannelDeleteAt     int64  `db:"channel_delete_at"`
+	MessageID           string `db:"message_id"`
+	ScheduledAt         int64  `db:"scheduled_at"`
+	CreatedAt           int64  `db:"created_at"`
+	CreatedBy           string `db:"created_by"`
+	UpdatedAt           int64  `db:"updated_at"`
+	UpdatedBy           string `db:"updated_by"`
 }
 
 func (q *Queries) ListNowAccessibleChannels(ctx context.Context) ([]ListNowAccessibleChannelsRow, error) {
@@ -315,9 +266,6 @@ func (q *Queries) ListNowAccessibleChannels(ctx context.Context) ([]ListNowAcces
 			&i.ChannelDeleteAt,
 			&i.MessageID,
 			&i.ScheduledAt,
-			&i.RequiredParticipantsPerTeam,
-			&i.ParticipationConfirmationUntil,
-			&i.ParticipationEntryClosed,
 			&i.CreatedAt,
 			&i.CreatedBy,
 			&i.UpdatedAt,
@@ -345,9 +293,6 @@ SELECT
     channel_delete_at,
     message_id,
     scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
     created_at,
     created_by,
     updated_at,
@@ -358,20 +303,17 @@ ORDER BY channel_delete_at ASC
 `
 
 type ListNowDeletableChannelsRow struct {
-	GuildID                        string `db:"guild_id"`
-	ChannelID                      string `db:"channel_id"`
-	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
-	ChannelAccessible              int64  `db:"channel_accessible"`
-	ChannelDeleteAt                int64  `db:"channel_delete_at"`
-	MessageID                      string `db:"message_id"`
-	ScheduledAt                    int64  `db:"scheduled_at"`
-	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
-	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
-	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
-	CreatedAt                      int64  `db:"created_at"`
-	CreatedBy                      string `db:"created_by"`
-	UpdatedAt                      int64  `db:"updated_at"`
-	UpdatedBy                      string `db:"updated_by"`
+	GuildID             string `db:"guild_id"`
+	ChannelID           string `db:"channel_id"`
+	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
+	ChannelAccessible   int64  `db:"channel_accessible"`
+	ChannelDeleteAt     int64  `db:"channel_delete_at"`
+	MessageID           string `db:"message_id"`
+	ScheduledAt         int64  `db:"scheduled_at"`
+	CreatedAt           int64  `db:"created_at"`
+	CreatedBy           string `db:"created_by"`
+	UpdatedAt           int64  `db:"updated_at"`
+	UpdatedBy           string `db:"updated_by"`
 }
 
 func (q *Queries) ListNowDeletableChannels(ctx context.Context) ([]ListNowDeletableChannelsRow, error) {
@@ -391,86 +333,6 @@ func (q *Queries) ListNowDeletableChannels(ctx context.Context) ([]ListNowDeleta
 			&i.ChannelDeleteAt,
 			&i.MessageID,
 			&i.ScheduledAt,
-			&i.RequiredParticipantsPerTeam,
-			&i.ParticipationConfirmationUntil,
-			&i.ParticipationEntryClosed,
-			&i.CreatedAt,
-			&i.CreatedBy,
-			&i.UpdatedAt,
-			&i.UpdatedBy,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listNowExpiredConfirmationDeadlines = `-- name: ListNowExpiredConfirmationDeadlines :many
-SELECT
-    guild_id,
-    channel_id,
-    channel_accessible_at,
-    channel_accessible,
-    channel_delete_at,
-    message_id,
-    scheduled_at,
-    required_participants_per_team,
-    participation_confirmation_until,
-    participation_entry_closed,
-    created_at,
-    created_by,
-    updated_at,
-    updated_by
-FROM matches
-WHERE matches.participation_confirmation_until <= unixepoch('now')
-AND matches.participation_entry_closed = 0
-ORDER BY participation_confirmation_until ASC
-`
-
-type ListNowExpiredConfirmationDeadlinesRow struct {
-	GuildID                        string `db:"guild_id"`
-	ChannelID                      string `db:"channel_id"`
-	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
-	ChannelAccessible              int64  `db:"channel_accessible"`
-	ChannelDeleteAt                int64  `db:"channel_delete_at"`
-	MessageID                      string `db:"message_id"`
-	ScheduledAt                    int64  `db:"scheduled_at"`
-	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
-	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
-	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
-	CreatedAt                      int64  `db:"created_at"`
-	CreatedBy                      string `db:"created_by"`
-	UpdatedAt                      int64  `db:"updated_at"`
-	UpdatedBy                      string `db:"updated_by"`
-}
-
-func (q *Queries) ListNowExpiredConfirmationDeadlines(ctx context.Context) ([]ListNowExpiredConfirmationDeadlinesRow, error) {
-	rows, err := q.query(ctx, q.listNowExpiredConfirmationDeadlinesStmt, listNowExpiredConfirmationDeadlines)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListNowExpiredConfirmationDeadlinesRow{}
-	for rows.Next() {
-		var i ListNowExpiredConfirmationDeadlinesRow
-		if err := rows.Scan(
-			&i.GuildID,
-			&i.ChannelID,
-			&i.ChannelAccessibleAt,
-			&i.ChannelAccessible,
-			&i.ChannelDeleteAt,
-			&i.MessageID,
-			&i.ScheduledAt,
-			&i.RequiredParticipantsPerTeam,
-			&i.ParticipationConfirmationUntil,
-			&i.ParticipationEntryClosed,
 			&i.CreatedAt,
 			&i.CreatedBy,
 			&i.UpdatedAt,
@@ -496,25 +358,19 @@ SET
     channel_delete_at = ?2,
     message_id = ?3,
     scheduled_at = ?4,
-    required_participants_per_team = ?5,
-    participation_confirmation_until = ?6,
-    participation_entry_closed = ?7,
-    updated_at = ?8,
-    updated_by = ?9
-WHERE channel_id = ?10
+    updated_at = ?5,
+    updated_by = ?6
+WHERE channel_id = ?7
 `
 
 type RescheduleMatchParams struct {
-	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
-	ChannelDeleteAt                int64  `db:"channel_delete_at"`
-	MessageID                      string `db:"message_id"`
-	ScheduledAt                    int64  `db:"scheduled_at"`
-	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
-	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
-	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
-	UpdatedAt                      int64  `db:"updated_at"`
-	UpdatedBy                      string `db:"updated_by"`
-	ChannelID                      string `db:"channel_id"`
+	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
+	ChannelDeleteAt     int64  `db:"channel_delete_at"`
+	MessageID           string `db:"message_id"`
+	ScheduledAt         int64  `db:"scheduled_at"`
+	UpdatedAt           int64  `db:"updated_at"`
+	UpdatedBy           string `db:"updated_by"`
+	ChannelID           string `db:"channel_id"`
 }
 
 func (q *Queries) RescheduleMatch(ctx context.Context, arg RescheduleMatchParams) error {
@@ -523,9 +379,6 @@ func (q *Queries) RescheduleMatch(ctx context.Context, arg RescheduleMatchParams
 		arg.ChannelDeleteAt,
 		arg.MessageID,
 		arg.ScheduledAt,
-		arg.RequiredParticipantsPerTeam,
-		arg.ParticipationConfirmationUntil,
-		arg.ParticipationEntryClosed,
 		arg.UpdatedAt,
 		arg.UpdatedBy,
 		arg.ChannelID,

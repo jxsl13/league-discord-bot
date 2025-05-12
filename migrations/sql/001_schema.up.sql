@@ -47,9 +47,6 @@ CREATE TABLE IF NOT EXISTS matches (
     channel_delete_at                   INTEGER NOT NULL,
     message_id                          TEXT NOT NULL,
     scheduled_at                        INTEGER NOT NULL,
-    required_participants_per_team      INTEGER NOT NULL,
-    participation_confirmation_until    INTEGER NOT NULL,
-    participation_entry_closed          INTEGER NOT NULL DEFAULT 0,
     created_at                          INTEGER NOT NULL,
     created_by                          TEXT NOT NULL,
     updated_at                          INTEGER NOT NULL DEFAULT (unixepoch('now')),
@@ -58,6 +55,16 @@ CREATE TABLE IF NOT EXISTS matches (
 
 CREATE INDEX IF NOT EXISTS idx_matches_guild_id ON matches (guild_id);
 CREATE INDEX IF NOT EXISTS idx_matches_channel_id ON matches (channel_id);
+
+CREATE TABLE IF NOT EXISTS participation_requirements (
+    channel_id            TEXT PRIMARY KEY NOT NULL,
+    participants_per_team INTEGER NOT NULL,
+    deadline_at           INTEGER NOT NULL,
+    entry_closed          INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_participation_requirements_channel_id ON participation_requirements (channel_id);
+
 
 CREATE TABLE IF NOT EXISTS teams (
     channel_id                  TEXT NOT NULL REFERENCES matches(channel_id) ON DELETE CASCADE,

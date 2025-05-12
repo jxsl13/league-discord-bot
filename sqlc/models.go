@@ -20,20 +20,17 @@ type GuildConfig struct {
 }
 
 type Match struct {
-	GuildID                        string `db:"guild_id"`
-	ChannelID                      string `db:"channel_id"`
-	ChannelAccessible              int64  `db:"channel_accessible"`
-	ChannelAccessibleAt            int64  `db:"channel_accessible_at"`
-	ChannelDeleteAt                int64  `db:"channel_delete_at"`
-	MessageID                      string `db:"message_id"`
-	ScheduledAt                    int64  `db:"scheduled_at"`
-	RequiredParticipantsPerTeam    int64  `db:"required_participants_per_team"`
-	ParticipationConfirmationUntil int64  `db:"participation_confirmation_until"`
-	ParticipationEntryClosed       int64  `db:"participation_entry_closed"`
-	CreatedAt                      int64  `db:"created_at"`
-	CreatedBy                      string `db:"created_by"`
-	UpdatedAt                      int64  `db:"updated_at"`
-	UpdatedBy                      string `db:"updated_by"`
+	GuildID             string `db:"guild_id"`
+	ChannelID           string `db:"channel_id"`
+	ChannelAccessible   int64  `db:"channel_accessible"`
+	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
+	ChannelDeleteAt     int64  `db:"channel_delete_at"`
+	MessageID           string `db:"message_id"`
+	ScheduledAt         int64  `db:"scheduled_at"`
+	CreatedAt           int64  `db:"created_at"`
+	CreatedBy           string `db:"created_by"`
+	UpdatedAt           int64  `db:"updated_at"`
+	UpdatedBy           string `db:"updated_by"`
 }
 
 type Moderator struct {
@@ -49,6 +46,13 @@ type Notification struct {
 	CreatedBy  string `db:"created_by"`
 	UpdatedAt  int64  `db:"updated_at"`
 	UpdatedBy  string `db:"updated_by"`
+}
+
+type ParticipationRequirement struct {
+	ChannelID           string `db:"channel_id"`
+	ParticipantsPerTeam int64  `db:"participants_per_team"`
+	DeadlineAt          int64  `db:"deadline_at"`
+	EntryClosed         int64  `db:"entry_closed"`
 }
 
 type RoleAccess struct {

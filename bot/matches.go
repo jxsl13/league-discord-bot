@@ -215,32 +215,36 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			channelAccessibleAt              = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ChannelAccessOffset)).Unix()
 			channelDeleteAt                  = scheduledAt.Add(time.Second * time.Duration(cfg.ChannelDeleteOffset)).Unix()
 			participatonConfirmationDeadline = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ParticipationConfirmOffset)).Unix()
-			participationEntryClosed         = int64(0)
 		)
-		if participantsPerTeam == 0 {
-			// if there are no participants required, set the participation entry closed
-			participationEntryClosed = 1
-			// which disables any participation checks for it
-		}
 
 		err = q.AddMatch(ctx, sqlc.AddMatchParams{
-			GuildID:                        guildID.String(),
-			ChannelID:                      channelIDStr,
-			ChannelAccessibleAt:            max(nowUnix, channelAccessibleAt),
-			ChannelDeleteAt:                max(nowUnix, channelDeleteAt),
-			MessageID:                      msg.ID.String(),
-			ScheduledAt:                    scheduledAt.Unix(),
-			RequiredParticipantsPerTeam:    participantsPerTeam,
-			ParticipationConfirmationUntil: max(nowUnix, participatonConfirmationDeadline),
-			ParticipationEntryClosed:       participationEntryClosed,
-			CreatedAt:                      nowUnix,
-			CreatedBy:                      userIDStr,
-			UpdatedAt:                      nowUnix,
-			UpdatedBy:                      userIDStr,
+			GuildID:             guildID.String(),
+			ChannelID:           channelIDStr,
+			ChannelAccessibleAt: max(nowUnix, channelAccessibleAt),
+			ChannelDeleteAt:     max(nowUnix, channelDeleteAt),
+			MessageID:           msg.ID.String(),
+			ScheduledAt:         scheduledAt.Unix(),
+			CreatedAt:           nowUnix,
+			CreatedBy:           userIDStr,
+			UpdatedAt:           nowUnix,
+			UpdatedBy:           userIDStr,
 		})
 		if err != nil {
 			err = fmt.Errorf("error adding match: %w", err)
 			return fmt.Errorf("%w, please contact the owner of the bot", err)
+		}
+
+		if participantsPerTeam > 0 {
+			err = q.AddParticipationRequirements(ctx, sqlc.AddParticipationRequirementsParams{
+				ChannelID:           channelIDStr,
+				ParticipantsPerTeam: participantsPerTeam,
+				DeadlineAt:          max(nowUnix, participatonConfirmationDeadline),
+				EntryClosed:         0,
+			})
+			if err != nil {
+				err = fmt.Errorf("error adding participation requirements: %w", err)
+				return fmt.Errorf("%w, please contact the owner of the bot", err)
+			}
 		}
 
 		// team1

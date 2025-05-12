@@ -35,3 +35,17 @@ func MinInteger(name string, options discord.CommandInteractionOptions, min int6
 	}
 	return i, nil
 }
+
+func MinMaxInteger(name string, options discord.CommandInteractionOptions, min, max int64) (int64, error) {
+	i, err := IntegerOption(name, options)
+	if err != nil {
+		return 0, err
+	}
+	if i < min {
+		return 0, fmt.Errorf("invalid integer parameter %q: must be at least %d", name, min)
+	}
+	if i > max {
+		return 0, fmt.Errorf("invalid integer parameter %q: must be at most %d", name, max)
+	}
+	return i, nil
+}

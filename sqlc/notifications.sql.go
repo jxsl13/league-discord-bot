@@ -52,6 +52,19 @@ func (q *Queries) AddNotification(ctx context.Context, arg AddNotificationParams
 	return err
 }
 
+const countNotifications = `-- name: CountNotifications :one
+SELECT COUNT(*)
+FROM notifications
+WHERE channel_id = ?1
+`
+
+func (q *Queries) CountNotifications(ctx context.Context, channelID string) (int64, error) {
+	row := q.queryRow(ctx, q.countNotificationsStmt, countNotifications, channelID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteMatchNotifications = `-- name: DeleteMatchNotifications :exec
 DELETE FROM notifications
 WHERE channel_id = ?1

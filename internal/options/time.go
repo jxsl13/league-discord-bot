@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/diamondburned/arikawa/v3/discord"
+	"github.com/jxs13/league-discord-bot/internal/format"
 	"github.com/jxs13/league-discord-bot/internal/parse"
 )
 
@@ -31,6 +32,23 @@ func FutureTimeInLocation(datetimeName, locationName string, offset time.Duratio
 
 	if time.Until(t) < offset.Abs() {
 		return time.Time{}, fmt.Errorf("invalid parameter %q: must be at least %s in the future", datetimeName, offset)
+	}
+	return t, nil
+}
+
+func TimeBetweenInLocation(datetimeName, locationName string, min, max time.Time, options discord.CommandInteractionOptions) (time.Time, error) {
+	t, err := TimeInLocation(datetimeName, locationName, options)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	if t.Before(min) || t.After(max) {
+		return time.Time{}, fmt.Errorf("invalid parameter %q: must be between %s and %s, is %s",
+			datetimeName,
+			format.DiscordTimestamp(min),
+			format.DiscordTimestamp(max),
+			format.DiscordTimestamp(t),
+		)
 	}
 	return t, nil
 }
