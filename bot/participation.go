@@ -20,8 +20,8 @@ func (b *Bot) handleAddParticipationReaction(e *gateway.MessageReactionAddEvent)
 	}
 
 	var (
-		channelID = e.ChannelID.String()
-		roleIDs   = e.Member.RoleIDs
+		channelID   = e.ChannelID.String()
+		userRoleIDs = e.Member.RoleIDs
 	)
 
 	err := b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
@@ -43,14 +43,14 @@ func (b *Bot) handleAddParticipationReaction(e *gateway.MessageReactionAddEvent)
 			return nil
 		}
 
-		ids := make([]string, 0, len(roleIDs))
-		for _, rid := range roleIDs {
-			ids = append(ids, rid.String())
+		rids := make([]string, 0, len(userRoleIDs))
+		for _, rid := range userRoleIDs {
+			rids = append(rids, rid.String())
 		}
 
 		teams, err := q.GetMatchTeamByRoles(ctx, sqlc.GetMatchTeamByRolesParams{
 			ChannelID: channelID,
-			RoleIds:   ids,
+			RoleIds:   rids,
 		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -58,9 +58,9 @@ func (b *Bot) handleAddParticipationReaction(e *gateway.MessageReactionAddEvent)
 				return nil
 			}
 			return fmt.Errorf("error getting match for channel %s: %w", channelID, err)
-		}
-
-		if len(teams) > 1 {
+		} else if len(teams) == 0 {
+			return nil
+		} else if len(teams) > 1 {
 			// removing emoji reacion, because the user has both teams as roles
 			err = b.state.DeleteUserReaction(e.ChannelID, e.MessageID, e.UserID, ReactionEmoji)
 			if err != nil {
@@ -69,6 +69,7 @@ func (b *Bot) handleAddParticipationReaction(e *gateway.MessageReactionAddEvent)
 			return nil
 		}
 
+		// has exactly one team associated with the user in the match
 		team := teams[0]
 
 		// found match, add user to match
@@ -100,21 +101,23 @@ func (b *Bot) handleRemoveParticipationReaction(e *gateway.MessageReactionRemove
 		userID    = e.UserID
 	)
 
-	err := b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
-		member, err := b.state.Member(guildID, userID)
-		if err != nil {
-			return fmt.Errorf("error getting member %s: %w", userID, err)
-		}
-		roleIDs := member.RoleIDs
+	member, err := b.state.Member(guildID, userID)
+	if err != nil {
+		log.Println(fmt.Errorf("error getting member %s: %w", userID, err))
+		return
+	}
+	userRoleIDs := member.RoleIDs
 
-		ids := make([]string, 0, len(roleIDs))
-		for _, rid := range roleIDs {
-			ids = append(ids, rid.String())
-		}
+	rids := make([]string, 0, len(userRoleIDs))
+	for _, rid := range userRoleIDs {
+		rids = append(rids, rid.String())
+	}
+
+	err = b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
 
 		teams, err := q.GetMatchTeamByRoles(ctx, sqlc.GetMatchTeamByRolesParams{
 			ChannelID: channelID.String(),
-			RoleIds:   ids,
+			RoleIds:   rids,
 		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -122,6 +125,9 @@ func (b *Bot) handleRemoveParticipationReaction(e *gateway.MessageReactionRemove
 				return nil
 			}
 			return fmt.Errorf("error getting match for channel %s: %v", channelID, err)
+		} else if len(teams) == 0 {
+			// no match team found
+			return nil
 		}
 
 		var teamRoleID string
@@ -140,9 +146,9 @@ func (b *Bot) handleRemoveParticipationReaction(e *gateway.MessageReactionRemove
 			// we cannot recreate a user's reaction, which is why we need to try to guess as best as we can, where
 			// to remove the user from.
 			// this case should not happen, because we try to prevent the user from creating reactions when he has both teams assigned.
-			roleID, ok := sliceutils.ContainsOne(roleIDs, teamRoleIDs...)
+			roleID, ok := sliceutils.ContainsOne(userRoleIDs, teamRoleIDs...)
 			if !ok {
-				return fmt.Errorf("invalid state, user does not have role ids, even tho he should have them: expected to have one of %v, but has %v", teamRoleIDs, roleIDs)
+				return fmt.Errorf("invalid state, user does not have role ids, even tho he should have them: expected to have one of %v, but has %v", teamRoleIDs, userRoleIDs)
 			}
 			teamRoleID = roleID.String()
 		}
