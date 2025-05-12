@@ -28,10 +28,10 @@ type Bot struct {
 	userID discord.UserID
 	wg     *sync.WaitGroup
 
-	defaultNotificationOffsets            []time.Duration
-	defaultChannelAccessOffset            time.Duration
-	defaulParticipationConfirmationOffset time.Duration
-	defaultChannelDeleteOffset            time.Duration
+	defaultNotificationOffsets []time.Duration
+	defaultChannelAccessOffset time.Duration
+	defaulRequirementsOffset   time.Duration
+	defaultChannelDeleteOffset time.Duration
 }
 
 // New requires a discord bot token and returns a Bot instance.
@@ -44,20 +44,20 @@ func New(
 	minBackoff time.Duration,
 	loopInterval time.Duration,
 	defaultChannelAccessOffset time.Duration,
-	defaulParticipationConfirmationOffset time.Duration,
+	defaulRequirementsOffset time.Duration,
 	defaultChannelDeleteOffset time.Duration,
 ) (*Bot, error) {
 
 	s := state.New("Bot " + token)
 	bot := &Bot{
-		ctx:                                   ctx,
-		state:                                 s,
-		db:                                    db,
-		wg:                                    &sync.WaitGroup{},
-		defaultNotificationOffsets:            defaultNotificationOffsets,
-		defaultChannelAccessOffset:            defaultChannelAccessOffset,
-		defaulParticipationConfirmationOffset: defaulParticipationConfirmationOffset,
-		defaultChannelDeleteOffset:            defaultChannelDeleteOffset,
+		ctx:                        ctx,
+		state:                      s,
+		db:                         db,
+		wg:                         &sync.WaitGroup{},
+		defaultNotificationOffsets: defaultNotificationOffsets,
+		defaultChannelAccessOffset: defaultChannelAccessOffset,
+		defaulRequirementsOffset:   defaulRequirementsOffset,
+		defaultChannelDeleteOffset: defaultChannelDeleteOffset,
 	}
 
 	s.AddIntents(
@@ -239,7 +239,7 @@ func (b *Bot) overrideCommands() error {
 					OptionName: "participation_confirm_offset",
 					Description: fmt.Sprintf(
 						"Deadline for participation confirmation, default: %s",
-						b.defaulParticipationConfirmationOffset,
+						b.defaulRequirementsOffset,
 					),
 					MinLength: option.NewInt(2),
 					MaxLength: option.NewInt(11),

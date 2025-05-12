@@ -1,0 +1,19 @@
+services:
+  league-discord-bot:
+    container_name: league-discord-bot
+    image: ghcr.io/jxsl13/league-discord-bot:latest
+    restart: unless-stopped
+    env_file:
+      # contains the discord token
+      # DISCORD_TOKEN="..."
+      - secrets.env
+    environment:
+      REMINDER_INTERVALS: "24h,1h,15m,5m,30s"
+      BACKOFF_MIN_DURATION: "5s"
+      ASYNC_LOOP_INTERVAL: "15s"
+      GUILD_CHANNEL_DELETE_OFFSET: "24h"
+      GUILD_CHANNEL_ACCESS_OFFSET: "168h"
+      REQUIREMENTS_OFFSET: "24h"
+      DSN: /data/league.db
+    volumes:
+      - ./volume/data:/data

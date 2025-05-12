@@ -13,14 +13,13 @@ import (
 
 func New() *Config {
 	return &Config{
-		DSN:                        filepath.Join(filepath.Dir(os.Args[0]), "league.db"),
-		ChannelAccessOffset:        7 * 24 * time.Hour,
-		ParticipationConfirmOffset: 24 * time.Hour,
-		ChannelDeleteOffset:        24 * time.Hour,
-
-		AsyncLoopInterval:  15 * time.Second,
-		BackoffMinDuration: 5 * time.Second,
-		ReminderIntervals:  []time.Duration{24 * time.Hour, 1 * time.Hour, 15 * time.Minute, 5 * time.Minute, 30 * time.Second},
+		DSN:                 filepath.Join(filepath.Dir(os.Args[0]), "league.db"),
+		ChannelAccessOffset: 7 * 24 * time.Hour,
+		RequirementsOffset:  24 * time.Hour,
+		ChannelDeleteOffset: 24 * time.Hour,
+		AsyncLoopInterval:   15 * time.Second,
+		BackoffMinDuration:  5 * time.Second,
+		ReminderIntervals:   []time.Duration{24 * time.Hour, 1 * time.Hour, 15 * time.Minute, 5 * time.Minute, 30 * time.Second},
 	}
 }
 
@@ -34,9 +33,9 @@ type Config struct {
 	ReminderIntervalsString string `koanf:"reminder.intervals" description:"default guild configuration list of reminder intervals to remind players before a match, e.g. 24h,1h,15m,5m,30s"`
 	ReminderIntervals       []time.Duration
 
-	ChannelAccessOffset        time.Duration `koanf:"guild.channel.access.offset" description:"default time offset for granting access to channels before a match"`
-	ParticipationConfirmOffset time.Duration `koanf:"participation.confirm.offset" description:"default time offset for confirming participation before a match"`
-	ChannelDeleteOffset        time.Duration `koanf:"guild.channel.delete.offset" description:"default time offset for deleting channels after a match"`
+	ChannelAccessOffset time.Duration `koanf:"guild.channel.access.offset" description:"default time offset for granting access to channels before a match"`
+	RequirementsOffset  time.Duration `koanf:"requirements.offset" description:"default time offset for participation requirements to be met before a match"`
+	ChannelDeleteOffset time.Duration `koanf:"guild.channel.delete.offset" description:"default time offset for deleting channels after a match"`
 }
 
 func (c *Config) Validate() error {
@@ -69,7 +68,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("backoff min duration must be smaller than or equal to async loop interval, e.g. 10s, 30s, 1m")
 	}
 
-	err := ValidatableGuildConfig(c.ChannelAccessOffset, c.ParticipationConfirmOffset, c.ChannelDeleteOffset)
+	err := ValidatableGuildConfig(c.ChannelAccessOffset, c.RequirementsOffset, c.ChannelDeleteOffset)
 	if err != nil {
 		return err
 	}
