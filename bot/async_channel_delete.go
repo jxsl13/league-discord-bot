@@ -104,13 +104,11 @@ func (b *Bot) asyncDeleteExpiredChannels(ctx context.Context) (d time.Duration, 
 	}
 
 	if len(orphanedMatches) > 0 {
-		q, err := b.Queries(ctx)
+		err = b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
+			return b.deleteOphanedMatches(ctx, q, orphanedMatches...)
+		})
 		if err != nil {
-			return 0, fmt.Errorf("error getting queries: %w", err)
-		}
-		err = b.deleteOphanedMatches(ctx, q, orphanedMatches...)
-		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("error deleting orphaned matches: %w", err)
 		}
 	}
 

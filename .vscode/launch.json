@@ -15,7 +15,7 @@
                 "GUILD_CHANNEL_DELETE_OFFSET": "10s",
                 "GUILD_CHANNEL_ACCESS_OFFSET": "2h",
                 "REQUIREMENTS_OFFSET": "30m",
-                "ASYNC_LOOP_INTERVAL": "5s",
+                "ASYNC_LOOP_INTERVAL": "1s",
                 "BACKOFF_MIN_DURATION": "1s",
                 "REMINDER_INTERVALS": "1m,5m,15m,30m,1h,2h",
                 //"DSN": "${workspaceFolder}/league.db",

@@ -216,12 +216,16 @@ func (b *Bot) TxQueries(ctx context.Context, f func(ctx context.Context, q *sqlc
 	return tx.Commit()
 }
 
-func (b *Bot) Queries(ctx context.Context) (q *sqlc.Queries, err error) {
+func (b *Bot) Queries(ctx context.Context, f func(ctx context.Context, q *sqlc.Queries) error) (err error) {
 	conn, err := b.db.Conn(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return sqlc.New(conn), nil
+	// return into pool in order to not exhaust the pool
+	defer conn.Close()
+	q := sqlc.New(conn)
+	defer q.Close()
+	return f(ctx, q)
 }
 
 func (b *Bot) overrideCommands() error {

@@ -88,7 +88,6 @@ func (c *rootContext) PreRunE(cmd *cobra.Command) func(cmd *cobra.Command, args 
 				// "PRAGMA cache_size = 2000;",
 			}, " ")
 		sqlite.RegisterConnectionHook(func(conn sqlite.ExecQuerierContext, dsn string) error {
-
 			_, err := conn.ExecContext(c.Context, pragmas, nil)
 			if err != nil {
 				return fmt.Errorf("failed to set PRAGMA: %w", err)
@@ -109,6 +108,11 @@ func (c *rootContext) PreRunE(cmd *cobra.Command) func(cmd *cobra.Command, args 
 		err = migrations.Migrate(c.Context, db)
 		if err != nil {
 			return err
+		}
+
+		_, err = db.ExecContext(c.Context, "VACUUM;")
+		if err != nil {
+			return fmt.Errorf("failed to vacuum database upon startup: %w", err)
 		}
 
 		return nil
