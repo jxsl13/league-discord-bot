@@ -7,3 +7,4 @@ __debug_bin*
 .gitignore
 *.db-wal
 league-discord-bot
+.DS_Store

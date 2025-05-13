@@ -1,7 +1,7 @@
 
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS streamers;
-DROP TABLE IF EXISTS moderator_roles;
+DROP TABLE IF EXISTS moderators;
 DROP TABLE IF EXISTS teams;
 DROP TABLE IF EXISTS participation_requirements;
 DROP TABLE IF EXISTS matches;

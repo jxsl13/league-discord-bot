@@ -90,6 +90,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteMatchStmt, err = db.PrepareContext(ctx, deleteMatch); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteMatch: %w", err)
 	}
+	if q.deleteMatchListStmt, err = db.PrepareContext(ctx, deleteMatchList); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteMatchList: %w", err)
+	}
 	if q.deleteMatchModeratorStmt, err = db.PrepareContext(ctx, deleteMatchModerator); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteMatchModerator: %w", err)
 	}
@@ -210,6 +213,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateMatchChannelAccessibilityStmt, err = db.PrepareContext(ctx, updateMatchChannelAccessibility); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateMatchChannelAccessibility: %w", err)
 	}
+	if q.updateMatchEventIDStmt, err = db.PrepareContext(ctx, updateMatchEventID); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateMatchEventID: %w", err)
+	}
 	if q.updateParticipationRequirementsStmt, err = db.PrepareContext(ctx, updateParticipationRequirements); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateParticipationRequirements: %w", err)
 	}
@@ -326,6 +332,11 @@ func (q *Queries) Close() error {
 	if q.deleteMatchStmt != nil {
 		if cerr := q.deleteMatchStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteMatchStmt: %w", cerr)
+		}
+	}
+	if q.deleteMatchListStmt != nil {
+		if cerr := q.deleteMatchListStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteMatchListStmt: %w", cerr)
 		}
 	}
 	if q.deleteMatchModeratorStmt != nil {
@@ -528,6 +539,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing updateMatchChannelAccessibilityStmt: %w", cerr)
 		}
 	}
+	if q.updateMatchEventIDStmt != nil {
+		if cerr := q.updateMatchEventIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateMatchEventIDStmt: %w", cerr)
+		}
+	}
 	if q.updateParticipationRequirementsStmt != nil {
 		if cerr := q.updateParticipationRequirementsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateParticipationRequirementsStmt: %w", cerr)
@@ -594,6 +610,7 @@ type Queries struct {
 	deleteGuildConfigStmt                      *sql.Stmt
 	deleteGuildMatchesStmt                     *sql.Stmt
 	deleteMatchStmt                            *sql.Stmt
+	deleteMatchListStmt                        *sql.Stmt
 	deleteMatchModeratorStmt                   *sql.Stmt
 	deleteMatchModeratorsStmt                  *sql.Stmt
 	deleteMatchNotificationsStmt               *sql.Stmt
@@ -634,6 +651,7 @@ type Queries struct {
 	updateCategoryIdStmt                       *sql.Stmt
 	updateGuildConfigStmt                      *sql.Stmt
 	updateMatchChannelAccessibilityStmt        *sql.Stmt
+	updateMatchEventIDStmt                     *sql.Stmt
 	updateParticipationRequirementsStmt        *sql.Stmt
 }
 
@@ -663,6 +681,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteGuildConfigStmt:                      q.deleteGuildConfigStmt,
 		deleteGuildMatchesStmt:                     q.deleteGuildMatchesStmt,
 		deleteMatchStmt:                            q.deleteMatchStmt,
+		deleteMatchListStmt:                        q.deleteMatchListStmt,
 		deleteMatchModeratorStmt:                   q.deleteMatchModeratorStmt,
 		deleteMatchModeratorsStmt:                  q.deleteMatchModeratorsStmt,
 		deleteMatchNotificationsStmt:               q.deleteMatchNotificationsStmt,
@@ -703,6 +722,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		updateCategoryIdStmt:                       q.updateCategoryIdStmt,
 		updateGuildConfigStmt:                      q.updateGuildConfigStmt,
 		updateMatchChannelAccessibilityStmt:        q.updateMatchChannelAccessibilityStmt,
+		updateMatchEventIDStmt:                     q.updateMatchEventIDStmt,
 		updateParticipationRequirementsStmt:        q.updateParticipationRequirementsStmt,
 	}
 }

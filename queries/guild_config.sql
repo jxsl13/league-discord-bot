@@ -5,16 +5,18 @@ INSERT OR IGNORE INTO guild_config (
     enabled,
     category_id,
     channel_access_offset,
+    event_creation_enabled,
     channel_delete_offset,
-    participation_confirm_offset,
+    requirements_offset,
     notification_offsets
 ) VALUES (
     :guild_id,
     :enabled,
     :category_id,
     :channel_access_offset,
+    :event_creation_enabled,
     :channel_delete_offset,
-    :participation_confirm_offset,
+    :requirements_offset,
     :notification_offsets
 );
 
@@ -23,8 +25,9 @@ UPDATE guild_config
 SET
     enabled = :enabled,
     channel_access_offset = :channel_access_offset,
+    event_creation_enabled = :event_creation_enabled,
     channel_delete_offset = :channel_delete_offset,
-    participation_confirm_offset = :participation_confirm_offset,
+    requirements_offset = :requirements_offset,
     notification_offsets = :notification_offsets
 WHERE guild_id = :guild_id;
 
@@ -46,8 +49,9 @@ SELECT
     enabled,
     category_id,
     channel_access_offset,
+    event_creation_enabled,
     channel_delete_offset,
-    participation_confirm_offset,
+    requirements_offset,
     notification_offsets
 FROM guild_config
 WHERE guild_id = :guild_id;
@@ -73,8 +77,9 @@ SELECT
     enabled,
     category_id,
     channel_access_offset,
+    event_creation_enabled,
     channel_delete_offset,
-    participation_confirm_offset,
+    requirements_offset,
     notification_offsets
 FROM guild_config
 WHERE category_id = :category_id

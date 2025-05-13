@@ -26,7 +26,7 @@ func (b *Bot) listMatchModeratorUserIDs(ctx context.Context, q *sqlc.Queries, ch
 	for _, mod := range mods {
 		uid, err := parse.UserID(mod.UserID)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing moderator role ID: %w", err)
+			return nil, fmt.Errorf("error parsing moderator user ID: %w", err)
 		}
 		modUserIDs = append(modUserIDs, uid)
 	}

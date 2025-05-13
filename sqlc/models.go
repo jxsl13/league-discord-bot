@@ -9,14 +9,15 @@ type Access struct {
 }
 
 type GuildConfig struct {
-	GuildID                    string `db:"guild_id"`
-	Enabled                    int64  `db:"enabled"`
-	CategoryID                 string `db:"category_id"`
-	ChannelAccessOffset        int64  `db:"channel_access_offset"`
-	ChannelDeleteOffset        int64  `db:"channel_delete_offset"`
-	ParticipationConfirmOffset int64  `db:"participation_confirm_offset"`
-	NotificationOffsets        string `db:"notification_offsets"`
-	MatchCounter               int64  `db:"match_counter"`
+	GuildID              string `db:"guild_id"`
+	Enabled              int64  `db:"enabled"`
+	CategoryID           string `db:"category_id"`
+	ChannelAccessOffset  int64  `db:"channel_access_offset"`
+	ChannelDeleteOffset  int64  `db:"channel_delete_offset"`
+	RequirementsOffset   int64  `db:"requirements_offset"`
+	NotificationOffsets  string `db:"notification_offsets"`
+	MatchCounter         int64  `db:"match_counter"`
+	EventCreationEnabled int64  `db:"event_creation_enabled"`
 }
 
 type Match struct {
@@ -31,6 +32,7 @@ type Match struct {
 	CreatedBy           string `db:"created_by"`
 	UpdatedAt           int64  `db:"updated_at"`
 	UpdatedBy           string `db:"updated_by"`
+	EventID             string `db:"event_id"`
 }
 
 type Moderator struct {

@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/diamondburned/arikawa/v3/api"
 	"github.com/diamondburned/arikawa/v3/api/cmdroute"
 	"github.com/diamondburned/arikawa/v3/discord"
 	"github.com/diamondburned/arikawa/v3/utils/json/option"
+	"github.com/jxs13/league-discord-bot/internal/discordutils"
 	"github.com/jxs13/league-discord-bot/internal/format"
 	"github.com/jxs13/league-discord-bot/internal/options"
 	"github.com/jxs13/league-discord-bot/internal/parse"
@@ -99,8 +101,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 
 		n, err := q.CountMatches(ctx, guildIDStr)
 		if err != nil {
-			err = fmt.Errorf("error counting matches: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return fmt.Errorf("error counting matches: %w", err)
 		}
 
 		if n >= MaxConcurrentMatches {
@@ -109,34 +110,30 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 
 		cfg, err := q.GetGuildConfig(ctx, guildIDStr)
 		if err != nil {
-			err = fmt.Errorf("error getting guild config: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return fmt.Errorf("error getting guild config: %w", err)
 		}
 
 		intervals, err := parse.ReminderIntervals(cfg.NotificationOffsets)
 		if err != nil {
-			err = fmt.Errorf("error parsing notification intervals: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return err
 		}
 
 		categoryID, err := parse.ChannelID(cfg.CategoryID)
 		if err != nil {
-			err = fmt.Errorf("error parsing category ID: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return err
 		}
 
 		cnt, err := q.NextMatchCounter(ctx, guildID.String())
 		if err != nil {
-			err = fmt.Errorf("error getting next match counter: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return fmt.Errorf("error getting next match counter: %w", err)
 		}
 
 		everyone, err := b.everyone(guildID)
 		if err != nil {
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return err
 		}
 
-		c, err := b.state.CreateChannel(guildID, api.CreateChannelData{
+		createData := api.CreateChannelData{
 			Name:       fmt.Sprintf("match-%d", cnt),
 			Type:       discord.GuildText,
 			CategoryID: categoryID,
@@ -152,10 +149,43 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 					Allow: discord.PermissionAllText,
 				},
 			},
-		})
+		}
+
+		c, err := b.state.CreateChannel(guildID, createData)
 		if err != nil {
-			err = fmt.Errorf("error creating channel: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+
+			// category was deleted while hte bot was turned off
+			if discordutils.IsStatus(err, http.StatusBadRequest) {
+				channels, err := b.state.Channels(guildID)
+				if err != nil {
+					return fmt.Errorf("failed to list channels: %w", err)
+				}
+				category, err := b.createMatchCategory(
+					guildID,
+					discordutils.LastChannelPosition(channels),
+				)
+				if err != nil {
+					return fmt.Errorf("error creating match category: %w", err)
+				}
+				categoryID = category.ID
+
+				err = q.UpdateCategoryId(ctx, sqlc.UpdateCategoryIdParams{
+					CategoryID: categoryID.String(),
+					GuildID:    guildIDStr,
+				})
+				if err != nil {
+					return fmt.Errorf("error updating category id: %w", err)
+				}
+
+				createData.CategoryID = categoryID
+				// category is recreated, now try to create the channel again
+				c, err = b.state.CreateChannel(guildID, createData)
+				if err != nil {
+					return fmt.Errorf("error creating channel: %w", err)
+				}
+			} else {
+				return fmt.Errorf("error creating channel: %w", err)
+			}
 		}
 		defer func() {
 			if err != nil {
@@ -171,7 +201,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			confirmation = ""
 		)
 		if participantsPerTeam > 0 {
-			vs = fmt.Sprintf("%don%d", participantsPerTeam, participantsPerTeam)
+			vs = fmt.Sprintf("(%don%d)", participantsPerTeam, participantsPerTeam)
 			confirmation = fmt.Sprintf("\n\nPlease react with %s to confirm your participation.", ReactionEmoji)
 		}
 
@@ -187,8 +217,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			),
 		)
 		if err != nil {
-			err = fmt.Errorf("error sending message: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return fmt.Errorf("error sending message: %w", err)
 		}
 		defer func() {
 			if err != nil {
@@ -203,8 +232,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			// only react when there are required participants for the teams
 			err = b.state.React(c.ID, msg.ID, ReactionEmoji)
 			if err != nil {
-				err = fmt.Errorf("error reacting to message: %w", err)
-				return fmt.Errorf("%w, please contact the owner of the bot", err)
+				return fmt.Errorf("error reacting to message: %w", err)
 			}
 		}
 
@@ -212,9 +240,9 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			channelID    = c.ID
 			channelIDStr = channelID.String()
 			// epoch seconds
-			channelAccessibleAt              = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ChannelAccessOffset)).Unix()
-			channelDeleteAt                  = scheduledAt.Add(time.Second * time.Duration(cfg.ChannelDeleteOffset)).Unix()
-			participatonConfirmationDeadline = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ParticipationConfirmOffset)).Unix()
+			channelAccessibleAt     = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ChannelAccessOffset)).Unix()
+			channelDeleteAt         = scheduledAt.Add(time.Second * time.Duration(cfg.ChannelDeleteOffset)).Unix()
+			participatonReqDeadline = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.RequirementsOffset)).Unix()
 		)
 
 		err = q.AddMatch(ctx, sqlc.AddMatchParams{
@@ -230,20 +258,18 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			UpdatedBy:           userIDStr,
 		})
 		if err != nil {
-			err = fmt.Errorf("error adding match: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return fmt.Errorf("error adding match: %w", err)
 		}
 
 		if participantsPerTeam > 0 {
 			err = q.AddParticipationRequirements(ctx, sqlc.AddParticipationRequirementsParams{
 				ChannelID:           channelIDStr,
 				ParticipantsPerTeam: participantsPerTeam,
-				DeadlineAt:          max(nowUnix, participatonConfirmationDeadline),
+				DeadlineAt:          max(nowUnix, participatonReqDeadline),
 				EntryClosed:         0,
 			})
 			if err != nil {
-				err = fmt.Errorf("error adding participation requirements: %w", err)
-				return fmt.Errorf("%w, please contact the owner of the bot", err)
+				return fmt.Errorf("error adding participation requirements: %w", err)
 			}
 		}
 
@@ -253,8 +279,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			RoleID:    team1.String(),
 		})
 		if err != nil {
-			err = fmt.Errorf("error adding match team 1: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return fmt.Errorf("error adding match team 1: %w", err)
 		}
 		// team 2
 		err = q.AddMatchTeam(ctx, sqlc.AddMatchTeamParams{
@@ -262,8 +287,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			RoleID:    team2.String(),
 		})
 		if err != nil {
-			err = fmt.Errorf("error adding match team 2: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return fmt.Errorf("error adding match team 2: %w", err)
 		}
 
 		err = q.AddMatchModerator(ctx, sqlc.AddMatchModeratorParams{
@@ -271,8 +295,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			UserID:    moderatorID.String(),
 		})
 		if err != nil {
-			err = fmt.Errorf("error adding match moderator: %w", err)
-			return fmt.Errorf("%w, please contact the owner of the bot", err)
+			return fmt.Errorf("error adding match moderator: %w", err)
 		}
 
 		if okStreamer {
@@ -282,8 +305,7 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 				Url:       streamUrl,
 			})
 			if err != nil {
-				err = fmt.Errorf("error adding match streamer: %w", err)
-				return fmt.Errorf("%w, please contact the owner of the bot", err)
+				return fmt.Errorf("error adding match streamer: %w", err)
 			}
 		}
 

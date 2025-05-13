@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/diamondburned/arikawa/v3/api"
@@ -20,25 +22,83 @@ import (
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
-func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandData) (resp *api.InteractionResponseData) {
+func (b *Bot) commandGuildConfiguration(ctx context.Context, data cmdroute.CommandData) (resp *api.InteractionResponseData) {
 
+	text := ""
 	err := b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
 		err := b.checkAccess(ctx, q, data.Event, ADMIN)
 		if err != nil {
 			return err
 		}
 
-		accessOffset, err := options.Duration("channel_access_offset", time.Hour, 720*time.Hour, data.Options)
+		cfg, err := q.GetGuildConfig(ctx, data.Event.GuildID.String())
 		if err != nil {
 			return err
 		}
 
-		deleteOffset, err := options.Duration("channel_delete_offset", time.Hour, 8760*time.Hour, data.Options)
+		var sb strings.Builder
+		sb.Grow(512)
+
+		var (
+			accessOffset        = time.Duration(cfg.ChannelAccessOffset) * time.Second
+			notificationOffsets = cfg.NotificationOffsets
+			requirementsOffset  = time.Duration(cfg.RequirementsOffset) * time.Second
+			deleteOffset        = time.Duration(cfg.ChannelDeleteOffset) * time.Second
+		)
+
+		sb.WriteString("Guild configuration:\n")
+		sb.WriteString("channel_access_offset: ")
+		sb.WriteString(format.MarkdownInlineCodeBlock(accessOffset.String()))
+		sb.WriteString("\n")
+		sb.WriteString("event_creation_enabled: ")
+		sb.WriteString(format.MarkdownInlineCodeBlock(strconv.FormatBool(int64ToBool(cfg.EventCreationEnabled))))
+		sb.WriteString("\n")
+		sb.WriteString("notification_offsets: ")
+		sb.WriteString(format.MarkdownInlineCodeBlock(notificationOffsets))
+		sb.WriteString("\n")
+		sb.WriteString("requirements_offset: ")
+		sb.WriteString(format.MarkdownInlineCodeBlock(requirementsOffset.String()))
+		sb.WriteString("\n")
+		sb.WriteString("channel_delete_offset: ")
+		sb.WriteString(format.MarkdownInlineCodeBlock(deleteOffset.String()))
+		sb.WriteString("\n")
+
+		text = sb.String()
+		if len(text) > 2000 {
+			text = text[:2000]
+		}
+		return nil
+	})
+	if err != nil {
+		return errorResponse(err)
+	}
+
+	return &api.InteractionResponseData{
+		Content: option.NewNullableString(text),
+		Flags:   discord.EphemeralMessage,
+	}
+}
+
+func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandData) (resp *api.InteractionResponseData) {
+
+	err := b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
+		// disable guild enabled check for this command
+		err := b.checkAccess(ctx, q, data.Event, ADMIN, true)
 		if err != nil {
 			return err
 		}
 
-		confirmOffset, err := options.Duration("participation_confirm_offset", time.Hour, 720*time.Hour, data.Options)
+		accessOffset, err := options.Duration("channel_access_offset", time.Minute, 720*time.Hour, data.Options)
+		if err != nil {
+			return err
+		}
+
+		deleteOffset, err := options.Duration("channel_delete_offset", time.Minute, 8760*time.Hour, data.Options)
+		if err != nil {
+			return err
+		}
+
+		requirementsOffset, err := options.Duration("requirements_offset", time.Minute, 720*time.Hour, data.Options)
 		if err != nil {
 			return err
 		}
@@ -48,18 +108,25 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 			return err
 		}
 
+		eventCreationEnabled, err := options.BoolInt64("event_creation_enabled", data.Options)
+		if err != nil {
+			return err
+		}
+
 		// reuse validation logic from config
-		err = config.ValidatableGuildConfig(accessOffset, confirmOffset, deleteOffset)
+		err = config.ValidatableGuildConfig(accessOffset, requirementsOffset, deleteOffset)
 		if err != nil {
 			return err
 		}
 
 		err = q.UpdateGuildConfig(ctx, sqlc.UpdateGuildConfigParams{
-			GuildID:                    data.Event.GuildID.String(),
-			ChannelDeleteOffset:        int64(deleteOffset / time.Second),
-			ChannelAccessOffset:        int64(accessOffset / time.Second),
-			ParticipationConfirmOffset: int64(confirmOffset / time.Second),
-			NotificationOffsets:        format.ReminderIntervals(intervals),
+			Enabled:              1,
+			GuildID:              data.Event.GuildID.String(),
+			ChannelDeleteOffset:  int64(deleteOffset / time.Second),
+			ChannelAccessOffset:  int64(accessOffset / time.Second),
+			RequirementsOffset:   int64(requirementsOffset / time.Second),
+			NotificationOffsets:  format.ReminderIntervals(intervals),
+			EventCreationEnabled: eventCreationEnabled,
 		})
 		if err != nil {
 			err = fmt.Errorf("error adding guild config: %w", err)
@@ -68,7 +135,7 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 		}
 
 		resp = &api.InteractionResponseData{
-			Content:         option.NewNullableString("Guild configuration was updated. New match schedules will be created accordingly"),
+			Content:         option.NewNullableString("Guild configuration was updated. New match schedules will be created accordingly."),
 			Flags:           discord.EphemeralMessage,
 			AllowedMentions: &api.AllowedMentions{ /* none */ },
 		}

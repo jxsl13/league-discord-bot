@@ -6,9 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
+	"github.com/diamondburned/arikawa/v3/api"
 	"github.com/diamondburned/arikawa/v3/discord"
+	"github.com/jxs13/league-discord-bot/internal/discordutils"
 	"github.com/jxs13/league-discord-bot/internal/parse"
 	"github.com/jxs13/league-discord-bot/internal/sliceutils"
 	"github.com/jxs13/league-discord-bot/sqlc"
@@ -31,6 +34,7 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 			return fmt.Errorf("error getting due participation requirements: %w", err)
 		}
 
+		orphanedMatches := make([]string, 0)
 		for _, req := range requirements {
 			err = q.CloseParticipationEntry(ctx, req.ChannelID)
 			if err != nil {
@@ -44,17 +48,17 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 
 			guildID, err := parse.GuildID(match.GuildID)
 			if err != nil {
-				return fmt.Errorf("error parsing guild ID: %w", err)
+				return err
 			}
 
 			channelID, err := parse.ChannelID(match.ChannelID)
 			if err != nil {
-				return fmt.Errorf("error parsing channel ID: %w", err)
+				return err
 			}
 
 			msgID, err := parse.MessageID(match.MessageID)
 			if err != nil {
-				return fmt.Errorf("error parsing message ID: %w", err)
+				return err
 			}
 
 			teamRoleIDs, err := b.listMatchTeamRoleIDs(ctx, q, channelID)
@@ -80,6 +84,12 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 				teamRoleIDs...,
 			)
 			if err != nil {
+				if discordutils.IsStatus(err, http.StatusNotFound) {
+					// channel not found -> delete match manually
+					log.Printf("channel %s or message %s not found, adding to orphaned list for deletion", channelID, msgID)
+					orphanedMatches = append(orphanedMatches, match.ChannelID)
+					continue
+				}
 				return fmt.Errorf("error getting confirmed participants: %w", err)
 			}
 			if !full {
@@ -99,8 +109,31 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 					nil,
 				)
 
+				if match.EventID != "" {
+					// delete scheduled event
+					eventID, err := parse.EventID(match.EventID)
+					if err != nil {
+						return fmt.Errorf("failed to parse event id for channel %s: %w", channelID, err)
+					}
+
+					const reason = "requirements for match not met"
+					event, err := b.state.EditScheduledEvent(guildID, eventID, reason, api.EditScheduledEventData{
+						Status: discord.CancelledEvent,
+					})
+					if err != nil && !discordutils.IsStatus(err, http.StatusNotFound) {
+						return fmt.Errorf("error deleting scheduled event %s in guild %s: %w", eventID, guildID, err)
+					}
+					log.Printf("cancelled scheduled event %s in guild %s, reason: %s", event.ID, guildID, reason)
+				}
+
 				_, err := b.state.SendMessageComplex(channelID, msg)
 				if err != nil {
+					if discordutils.IsStatus(err, http.StatusNotFound) {
+						// channel not found -> delete match manually
+						log.Printf("channel %s not found, adding to orphaned list for deletion", channelID)
+						orphanedMatches = append(orphanedMatches, match.ChannelID)
+						continue
+					}
 					return fmt.Errorf("error sending message: %w", err)
 				}
 				return nil
@@ -117,11 +150,25 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 
 			_, err = b.state.SendMessageComplex(channelID, msg)
 			if err != nil {
+				if discordutils.IsStatus(err, http.StatusNotFound) {
+					// channel not found -> delete match manually
+					log.Printf("channel %s not found, adding to orphaned list for deletion", channelID)
+					orphanedMatches = append(orphanedMatches, match.ChannelID)
+					continue
+				}
 				return fmt.Errorf("error sending message: %w", err)
 			}
 
 			log.Printf("closed participation entry for match %s, deadline at: %s", channelID, time.Unix(req.DeadlineAt, 0))
 		}
+
+		if len(orphanedMatches) > 0 {
+			err = b.deleteOphanedMatches(ctx, q, orphanedMatches...)
+			if err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -173,6 +220,9 @@ func (b *Bot) getConfirmedParticipants(
 
 		member, err := b.state.Member(guildID, u.ID)
 		if err != nil {
+			if discordutils.IsStatus(err, http.StatusNotFound) {
+				continue
+			}
 			return nil, false, fmt.Errorf("error getting member: %w", err)
 		}
 

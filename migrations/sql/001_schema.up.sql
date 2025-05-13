@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_matches_guild_id ON matches (guild_id);
 CREATE INDEX IF NOT EXISTS idx_matches_channel_id ON matches (channel_id);
 
 CREATE TABLE IF NOT EXISTS participation_requirements (
-    channel_id            TEXT PRIMARY KEY NOT NULL,
+    channel_id            TEXT PRIMARY KEY NOT NULL REFERENCES matches(channel_id) ON DELETE CASCADE,
     participants_per_team INTEGER NOT NULL,
     deadline_at           INTEGER NOT NULL,
     entry_closed          INTEGER NOT NULL DEFAULT 0

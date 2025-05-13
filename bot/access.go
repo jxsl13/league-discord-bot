@@ -21,12 +21,19 @@ var (
 
 type PermissionEnum string
 
-func (b *Bot) checkAccess(ctx context.Context, q *sqlc.Queries, e *discord.InteractionEvent, permission PermissionEnum) error {
+func (b *Bot) checkAccess(ctx context.Context, q *sqlc.Queries, e *discord.InteractionEvent, permission PermissionEnum, noGuild ...bool) error {
 
-	// first check if guild is enabled correctly
-	err := b.checkGuildEnabled(ctx, q, e.GuildID)
-	if err != nil {
-		return err
+	withGuild := true
+	if len(noGuild) > 0 {
+		withGuild = !noGuild[0]
+	}
+
+	if withGuild {
+		// first check if guild is enabled correctly
+		err := b.checkGuildEnabled(ctx, q, e.GuildID)
+		if err != nil {
+			return err
+		}
 	}
 
 	// check if admin or users have access

@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	LayoutDateTimeWithZone = "2006-01-02 15:04"
+	LayoutDateTime = "2006-01-02 15:04"
 )
 
 func Time(in string) (time.Time, error) {
@@ -14,10 +14,10 @@ func Time(in string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("empty time string")
 	}
 
-	t, err := time.Parse(LayoutDateTimeWithZone, in)
+	t, err := time.Parse(LayoutDateTime, in)
 	if err != nil {
 		return time.Time{},
-			fmt.Errorf("error parsing time: %w: allowed time format with timezone offset ±hh:mm: %s (examples: 2006-01-02 15:04 CEST, 2006-01-02 15:04 GMT-0100)", err, LayoutDateTimeWithZone)
+			fmt.Errorf("error parsing time: %w: allowed time format with timezone offset ±hh:mm: %s (examples: 2006-01-02 15:04 CEST, 2006-01-02 15:04 GMT-0100)", err, LayoutDateTime)
 	}
 
 	return t, nil
@@ -32,12 +32,12 @@ func Location(location string) (*time.Location, error) {
 }
 
 func TimeInLocation(datetime string, loc *time.Location) (time.Time, error) {
-	t, err := time.ParseInLocation(LayoutDateTimeWithZone, datetime, loc)
+	t, err := time.ParseInLocation(LayoutDateTime, datetime, loc)
 	if err != nil {
 		return time.Time{},
 			fmt.Errorf("invalid time: `%s`: expected the following format: `%s`: %w",
 				datetime,
-				LayoutDateTimeWithZone,
+				LayoutDateTime,
 				err,
 			)
 	}

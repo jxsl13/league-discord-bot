@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/diamondburned/arikawa/v3/api"
 	"github.com/diamondburned/arikawa/v3/discord"
+	"github.com/jxs13/league-discord-bot/internal/discordutils"
 	"github.com/jxs13/league-discord-bot/internal/format"
 	"github.com/jxs13/league-discord-bot/internal/maputils"
 	"github.com/jxs13/league-discord-bot/internal/parse"
@@ -43,7 +45,7 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 		for _, n := range notifications {
 			channelID, err := parse.ChannelID(n.ChannelID)
 			if err != nil {
-				return fmt.Errorf("error parsing channel ID: %w", err)
+				return err
 			}
 			l, ok := cnm[channelID]
 			if !ok {
@@ -53,6 +55,8 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 			cnm[channelID] = l
 		}
 
+		orphanedMatches := make([]string, 0)
+	outer:
 		for _, channelID := range maputils.SortedKeys(cnm) {
 			notifications := cnm[channelID]
 			channelIDStr := channelID.String()
@@ -78,6 +82,7 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 				return err
 			}
 			scheduledAt := time.Unix(match.ScheduledAt, 0)
+
 			for _, n := range notifications {
 
 				var msg api.SendMessageData
@@ -115,6 +120,16 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 
 				_, err = b.state.SendMessageComplex(channelID, msg)
 				if err != nil {
+					if discordutils.IsStatus(err, http.StatusNotFound) {
+						// channel not found -> delete match manually
+						log.Printf("channel %s not found, adding to orphaned list for deletion", channelID)
+						orphanedMatches = append(orphanedMatches, channelIDStr)
+
+						// we do not need to delete the notifications, because we will delete the match
+						// and everything referencing it, especially all the notifications
+						continue outer
+					}
+
 					return fmt.Errorf("error sending reminder message: %w", err)
 				}
 
@@ -131,6 +146,13 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 					channelID,
 					scheduledAt,
 				)
+			}
+		}
+
+		if len(orphanedMatches) > 0 {
+			err = b.deleteOphanedMatches(ctx, q, orphanedMatches...)
+			if err != nil {
+				return err
 			}
 		}
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/diamondburned/arikawa/v3/api"
 	"github.com/diamondburned/arikawa/v3/discord"
@@ -29,8 +30,29 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 
 	err := b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
 		if e.Type == discord.GuildText {
+			m, err := q.GetMatch(ctx, channelIDStr)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					// no match found, ignore
+					return nil
+				}
+				return fmt.Errorf("error getting match for channel %s: %w", channelID, err)
+			}
+
+			if m.EventID != "" {
+				eventID, err := parse.EventID(m.EventID)
+				if err != nil {
+					return fmt.Errorf("failed to parse event id for channel deletion: %w", err)
+				}
+
+				err = b.state.DeleteScheduledEvent(guildID, eventID)
+				if err != nil && !discordutils.IsStatus(err, http.StatusNotFound) {
+					return fmt.Errorf("error deleting scheduled event %s in guild %s: %w", eventID, guildID, err)
+				}
+			}
+
 			// just delete match channel if it matches the channel id
-			err := q.DeleteMatch(ctx, channelIDStr)
+			err = q.DeleteMatch(ctx, channelIDStr)
 			if err != nil {
 				return fmt.Errorf("error deleting match for channel %s: %w", channelID, err)
 			}
@@ -68,7 +90,7 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 		for _, m := range matches {
 			id, err := parse.ChannelID(m.ChannelID)
 			if err != nil {
-				return fmt.Errorf("error parsing channel ID %s: %w", m.ChannelID, err)
+				return err
 			}
 			channelIDs = append(channelIDs, id)
 		}

@@ -6,6 +6,7 @@ INSERT INTO matches (
     channel_accessible,
     channel_delete_at,
     message_id,
+    event_id,
     scheduled_at,
     created_at,
     created_by,
@@ -18,6 +19,7 @@ INSERT INTO matches (
     :channel_accessible,
     :channel_delete_at,
     :message_id,
+    :event_id,
     :scheduled_at,
     :created_at,
     :created_by,
@@ -31,6 +33,9 @@ DELETE FROM matches WHERE guild_id = :guild_id;
 -- name: DeleteMatch :exec
 DELETE FROM matches WHERE channel_id = :channel_id;
 
+-- name: DeleteMatchList :exec
+DELETE FROM matches WHERE channel_id IN (sqlc.slice('channel_id'));
+
 -- name: ListGuildMatches :many
 SELECT
     guild_id,
@@ -39,6 +44,7 @@ SELECT
     channel_accessible,
     channel_delete_at,
     message_id,
+    event_id,
     scheduled_at,
     created_at,
     created_by,
@@ -54,6 +60,7 @@ SET
     channel_accessible_at = :channel_accessible_at,
     channel_delete_at = :channel_delete_at,
     message_id = :message_id,
+    event_id = :event_id,
     scheduled_at = :scheduled_at,
     updated_at = :updated_at,
     updated_by = :updated_by
@@ -68,6 +75,7 @@ SELECT
     channel_accessible,
     channel_delete_at,
     message_id,
+    event_id,
     scheduled_at,
     created_at,
     created_by,
@@ -100,6 +108,12 @@ SET
     channel_accessible = :channel_accessible
 WHERE channel_id = :channel_id;
 
+-- name: UpdateMatchEventID :exec
+UPDATE matches
+SET
+    event_id = :event_id
+WHERE channel_id = :channel_id;
+
 
 -- name: ListNowDeletableChannels :many
 SELECT
@@ -109,6 +123,7 @@ SELECT
     channel_accessible,
     channel_delete_at,
     message_id,
+    event_id,
     scheduled_at,
     created_at,
     created_by,

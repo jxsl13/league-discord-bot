@@ -7,6 +7,7 @@ package sqlc
 
 import (
 	"context"
+	"strings"
 )
 
 const addMatch = `-- name: AddMatch :exec
@@ -17,6 +18,7 @@ INSERT INTO matches (
     channel_accessible,
     channel_delete_at,
     message_id,
+    event_id,
     scheduled_at,
     created_at,
     created_by,
@@ -33,7 +35,8 @@ INSERT INTO matches (
     ?8,
     ?9,
     ?10,
-    ?11
+    ?11,
+    ?12
 )
 `
 
@@ -44,6 +47,7 @@ type AddMatchParams struct {
 	ChannelAccessible   int64  `db:"channel_accessible"`
 	ChannelDeleteAt     int64  `db:"channel_delete_at"`
 	MessageID           string `db:"message_id"`
+	EventID             string `db:"event_id"`
 	ScheduledAt         int64  `db:"scheduled_at"`
 	CreatedAt           int64  `db:"created_at"`
 	CreatedBy           string `db:"created_by"`
@@ -59,6 +63,7 @@ func (q *Queries) AddMatch(ctx context.Context, arg AddMatchParams) error {
 		arg.ChannelAccessible,
 		arg.ChannelDeleteAt,
 		arg.MessageID,
+		arg.EventID,
 		arg.ScheduledAt,
 		arg.CreatedAt,
 		arg.CreatedBy,
@@ -99,6 +104,25 @@ func (q *Queries) DeleteMatch(ctx context.Context, channelID string) error {
 	return err
 }
 
+const deleteMatchList = `-- name: DeleteMatchList :exec
+DELETE FROM matches WHERE channel_id IN (/*SLICE:channel_id*/?)
+`
+
+func (q *Queries) DeleteMatchList(ctx context.Context, channelID []string) error {
+	query := deleteMatchList
+	var queryParams []interface{}
+	if len(channelID) > 0 {
+		for _, v := range channelID {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:channel_id*/?", strings.Repeat(",?", len(channelID))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:channel_id*/?", "NULL", 1)
+	}
+	_, err := q.exec(ctx, nil, query, queryParams...)
+	return err
+}
+
 const getMatch = `-- name: GetMatch :one
 SELECT
     guild_id,
@@ -107,6 +131,7 @@ SELECT
     channel_accessible,
     channel_delete_at,
     message_id,
+    event_id,
     scheduled_at,
     created_at,
     created_by,
@@ -123,6 +148,7 @@ type GetMatchRow struct {
 	ChannelAccessible   int64  `db:"channel_accessible"`
 	ChannelDeleteAt     int64  `db:"channel_delete_at"`
 	MessageID           string `db:"message_id"`
+	EventID             string `db:"event_id"`
 	ScheduledAt         int64  `db:"scheduled_at"`
 	CreatedAt           int64  `db:"created_at"`
 	CreatedBy           string `db:"created_by"`
@@ -140,6 +166,7 @@ func (q *Queries) GetMatch(ctx context.Context, channelID string) (GetMatchRow, 
 		&i.ChannelAccessible,
 		&i.ChannelDeleteAt,
 		&i.MessageID,
+		&i.EventID,
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.CreatedBy,
@@ -157,6 +184,7 @@ SELECT
     channel_accessible,
     channel_delete_at,
     message_id,
+    event_id,
     scheduled_at,
     created_at,
     created_by,
@@ -174,6 +202,7 @@ type ListGuildMatchesRow struct {
 	ChannelAccessible   int64  `db:"channel_accessible"`
 	ChannelDeleteAt     int64  `db:"channel_delete_at"`
 	MessageID           string `db:"message_id"`
+	EventID             string `db:"event_id"`
 	ScheduledAt         int64  `db:"scheduled_at"`
 	CreatedAt           int64  `db:"created_at"`
 	CreatedBy           string `db:"created_by"`
@@ -197,6 +226,7 @@ func (q *Queries) ListGuildMatches(ctx context.Context, guildID string) ([]ListG
 			&i.ChannelAccessible,
 			&i.ChannelDeleteAt,
 			&i.MessageID,
+			&i.EventID,
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.CreatedBy,
@@ -292,6 +322,7 @@ SELECT
     channel_accessible,
     channel_delete_at,
     message_id,
+    event_id,
     scheduled_at,
     created_at,
     created_by,
@@ -309,6 +340,7 @@ type ListNowDeletableChannelsRow struct {
 	ChannelAccessible   int64  `db:"channel_accessible"`
 	ChannelDeleteAt     int64  `db:"channel_delete_at"`
 	MessageID           string `db:"message_id"`
+	EventID             string `db:"event_id"`
 	ScheduledAt         int64  `db:"scheduled_at"`
 	CreatedAt           int64  `db:"created_at"`
 	CreatedBy           string `db:"created_by"`
@@ -332,6 +364,7 @@ func (q *Queries) ListNowDeletableChannels(ctx context.Context) ([]ListNowDeleta
 			&i.ChannelAccessible,
 			&i.ChannelDeleteAt,
 			&i.MessageID,
+			&i.EventID,
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.CreatedBy,
@@ -357,16 +390,18 @@ SET
     channel_accessible_at = ?1,
     channel_delete_at = ?2,
     message_id = ?3,
-    scheduled_at = ?4,
-    updated_at = ?5,
-    updated_by = ?6
-WHERE channel_id = ?7
+    event_id = ?4,
+    scheduled_at = ?5,
+    updated_at = ?6,
+    updated_by = ?7
+WHERE channel_id = ?8
 `
 
 type RescheduleMatchParams struct {
 	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
 	ChannelDeleteAt     int64  `db:"channel_delete_at"`
 	MessageID           string `db:"message_id"`
+	EventID             string `db:"event_id"`
 	ScheduledAt         int64  `db:"scheduled_at"`
 	UpdatedAt           int64  `db:"updated_at"`
 	UpdatedBy           string `db:"updated_by"`
@@ -378,6 +413,7 @@ func (q *Queries) RescheduleMatch(ctx context.Context, arg RescheduleMatchParams
 		arg.ChannelAccessibleAt,
 		arg.ChannelDeleteAt,
 		arg.MessageID,
+		arg.EventID,
 		arg.ScheduledAt,
 		arg.UpdatedAt,
 		arg.UpdatedBy,
@@ -400,5 +436,22 @@ type UpdateMatchChannelAccessibilityParams struct {
 
 func (q *Queries) UpdateMatchChannelAccessibility(ctx context.Context, arg UpdateMatchChannelAccessibilityParams) error {
 	_, err := q.exec(ctx, q.updateMatchChannelAccessibilityStmt, updateMatchChannelAccessibility, arg.ChannelAccessible, arg.ChannelID)
+	return err
+}
+
+const updateMatchEventID = `-- name: UpdateMatchEventID :exec
+UPDATE matches
+SET
+    event_id = ?1
+WHERE channel_id = ?2
+`
+
+type UpdateMatchEventIDParams struct {
+	EventID   string `db:"event_id"`
+	ChannelID string `db:"channel_id"`
+}
+
+func (q *Queries) UpdateMatchEventID(ctx context.Context, arg UpdateMatchEventIDParams) error {
+	_, err := q.exec(ctx, q.updateMatchEventIDStmt, updateMatchEventID, arg.EventID, arg.ChannelID)
 	return err
 }

@@ -53,3 +53,11 @@ func UserID(id string) (discord.UserID, error) {
 	}
 	return discord.UserID(s), nil
 }
+
+func EventID(id string) (discord.EventID, error) {
+	s, err := Snowflake(id)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse event ID: %w", err)
+	}
+	return discord.EventID(s), nil
+}

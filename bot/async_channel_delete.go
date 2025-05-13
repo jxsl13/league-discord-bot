@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/diamondburned/arikawa/v3/api"
+	"github.com/jxs13/league-discord-bot/internal/discordutils"
 	"github.com/jxs13/league-discord-bot/internal/parse"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
@@ -31,6 +33,10 @@ func (b *Bot) asyncDeleteExpiredChannels(ctx context.Context) (d time.Duration, 
 			}
 			return fmt.Errorf("error getting next match channel to delete: %w", err)
 		}
+		if len(deletes) == 0 {
+			// no channels to delete
+			return sql.ErrNoRows
+		}
 		return nil
 	})
 	if err != nil {
@@ -45,15 +51,34 @@ func (b *Bot) asyncDeleteExpiredChannels(ctx context.Context) (d time.Duration, 
 		return 0, nil
 	}
 
+	orphanedMatches := make([]string, 0)
 	for _, del := range deletes {
 		var (
 			deleteAt    = time.Unix(del.ChannelDeleteAt, 0).Truncate(time.Second)
 			scheduledAt = time.Unix(del.ScheduledAt, 0).Truncate(time.Second)
 		)
 
+		if del.EventID != "" {
+			// try deleting the scheduled event
+			guildID, err := parse.GuildID(del.GuildID)
+			if err != nil {
+				return 0, fmt.Errorf("failed to parse guild id for channel deletion: %w", err)
+			}
+
+			eventID, err := parse.EventID(del.EventID)
+			if err != nil {
+				return 0, fmt.Errorf("failed to parse event id for channel deletion: %w", err)
+			}
+
+			err = b.state.DeleteScheduledEvent(guildID, eventID)
+			if err != nil && !discordutils.IsStatus(err, http.StatusNotFound) {
+				return 0, fmt.Errorf("error deleting scheduled event %s in guild %s: %w", eventID, del.GuildID, err)
+			}
+		}
+
 		cid, err := parse.ChannelID(del.ChannelID)
 		if err != nil {
-			return 0, fmt.Errorf("error parsing channel ID: %w", err)
+			return 0, err
 		}
 
 		reason := fmt.Sprintf(
@@ -63,6 +88,12 @@ func (b *Bot) asyncDeleteExpiredChannels(ctx context.Context) (d time.Duration, 
 		)
 		err = b.state.DeleteChannel(cid, api.AuditLogReason(reason))
 		if err != nil {
+			if discordutils.IsStatus(err, http.StatusNotFound) {
+				// not found -> delete match manually
+				log.Printf("channel %s not found, adding to orphaned list for deletion", cid)
+				orphanedMatches = append(orphanedMatches, del.ChannelID)
+				continue
+			}
 			return 0, err
 		}
 
@@ -71,6 +102,17 @@ func (b *Bot) asyncDeleteExpiredChannels(ctx context.Context) (d time.Duration, 
 			scheduledAt,
 			time.Unix(del.ChannelDeleteAt, 0),
 		)
+	}
+
+	if len(orphanedMatches) > 0 {
+		q, err := b.Queries(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("error getting queries: %w", err)
+		}
+		err = b.deleteOphanedMatches(ctx, q, orphanedMatches...)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	// important that we do not overwrite this with 0,

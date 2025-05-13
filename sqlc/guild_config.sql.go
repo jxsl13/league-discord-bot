@@ -15,8 +15,9 @@ INSERT OR IGNORE INTO guild_config (
     enabled,
     category_id,
     channel_access_offset,
+    event_creation_enabled,
     channel_delete_offset,
-    participation_confirm_offset,
+    requirements_offset,
     notification_offsets
 ) VALUES (
     ?1,
@@ -25,18 +26,20 @@ INSERT OR IGNORE INTO guild_config (
     ?4,
     ?5,
     ?6,
-    ?7
+    ?7,
+    ?8
 )
 `
 
 type AddGuildConfigParams struct {
-	GuildID                    string `db:"guild_id"`
-	Enabled                    int64  `db:"enabled"`
-	CategoryID                 string `db:"category_id"`
-	ChannelAccessOffset        int64  `db:"channel_access_offset"`
-	ChannelDeleteOffset        int64  `db:"channel_delete_offset"`
-	ParticipationConfirmOffset int64  `db:"participation_confirm_offset"`
-	NotificationOffsets        string `db:"notification_offsets"`
+	GuildID              string `db:"guild_id"`
+	Enabled              int64  `db:"enabled"`
+	CategoryID           string `db:"category_id"`
+	ChannelAccessOffset  int64  `db:"channel_access_offset"`
+	EventCreationEnabled int64  `db:"event_creation_enabled"`
+	ChannelDeleteOffset  int64  `db:"channel_delete_offset"`
+	RequirementsOffset   int64  `db:"requirements_offset"`
+	NotificationOffsets  string `db:"notification_offsets"`
 }
 
 func (q *Queries) AddGuildConfig(ctx context.Context, arg AddGuildConfigParams) error {
@@ -45,8 +48,9 @@ func (q *Queries) AddGuildConfig(ctx context.Context, arg AddGuildConfigParams) 
 		arg.Enabled,
 		arg.CategoryID,
 		arg.ChannelAccessOffset,
+		arg.EventCreationEnabled,
 		arg.ChannelDeleteOffset,
-		arg.ParticipationConfirmOffset,
+		arg.RequirementsOffset,
 		arg.NotificationOffsets,
 	)
 	return err
@@ -80,21 +84,23 @@ SELECT
     enabled,
     category_id,
     channel_access_offset,
+    event_creation_enabled,
     channel_delete_offset,
-    participation_confirm_offset,
+    requirements_offset,
     notification_offsets
 FROM guild_config
 WHERE guild_id = ?1
 `
 
 type GetGuildConfigRow struct {
-	GuildID                    string `db:"guild_id"`
-	Enabled                    int64  `db:"enabled"`
-	CategoryID                 string `db:"category_id"`
-	ChannelAccessOffset        int64  `db:"channel_access_offset"`
-	ChannelDeleteOffset        int64  `db:"channel_delete_offset"`
-	ParticipationConfirmOffset int64  `db:"participation_confirm_offset"`
-	NotificationOffsets        string `db:"notification_offsets"`
+	GuildID              string `db:"guild_id"`
+	Enabled              int64  `db:"enabled"`
+	CategoryID           string `db:"category_id"`
+	ChannelAccessOffset  int64  `db:"channel_access_offset"`
+	EventCreationEnabled int64  `db:"event_creation_enabled"`
+	ChannelDeleteOffset  int64  `db:"channel_delete_offset"`
+	RequirementsOffset   int64  `db:"requirements_offset"`
+	NotificationOffsets  string `db:"notification_offsets"`
 }
 
 func (q *Queries) GetGuildConfig(ctx context.Context, guildID string) (GetGuildConfigRow, error) {
@@ -105,8 +111,9 @@ func (q *Queries) GetGuildConfig(ctx context.Context, guildID string) (GetGuildC
 		&i.Enabled,
 		&i.CategoryID,
 		&i.ChannelAccessOffset,
+		&i.EventCreationEnabled,
 		&i.ChannelDeleteOffset,
-		&i.ParticipationConfirmOffset,
+		&i.RequirementsOffset,
 		&i.NotificationOffsets,
 	)
 	return i, err
@@ -118,8 +125,9 @@ SELECT
     enabled,
     category_id,
     channel_access_offset,
+    event_creation_enabled,
     channel_delete_offset,
-    participation_confirm_offset,
+    requirements_offset,
     notification_offsets
 FROM guild_config
 WHERE category_id = ?1
@@ -127,13 +135,14 @@ LIMIT 1
 `
 
 type GetGuildConfigByCategoryRow struct {
-	GuildID                    string `db:"guild_id"`
-	Enabled                    int64  `db:"enabled"`
-	CategoryID                 string `db:"category_id"`
-	ChannelAccessOffset        int64  `db:"channel_access_offset"`
-	ChannelDeleteOffset        int64  `db:"channel_delete_offset"`
-	ParticipationConfirmOffset int64  `db:"participation_confirm_offset"`
-	NotificationOffsets        string `db:"notification_offsets"`
+	GuildID              string `db:"guild_id"`
+	Enabled              int64  `db:"enabled"`
+	CategoryID           string `db:"category_id"`
+	ChannelAccessOffset  int64  `db:"channel_access_offset"`
+	EventCreationEnabled int64  `db:"event_creation_enabled"`
+	ChannelDeleteOffset  int64  `db:"channel_delete_offset"`
+	RequirementsOffset   int64  `db:"requirements_offset"`
+	NotificationOffsets  string `db:"notification_offsets"`
 }
 
 func (q *Queries) GetGuildConfigByCategory(ctx context.Context, categoryID string) (GetGuildConfigByCategoryRow, error) {
@@ -144,8 +153,9 @@ func (q *Queries) GetGuildConfigByCategory(ctx context.Context, categoryID strin
 		&i.Enabled,
 		&i.CategoryID,
 		&i.ChannelAccessOffset,
+		&i.EventCreationEnabled,
 		&i.ChannelDeleteOffset,
-		&i.ParticipationConfirmOffset,
+		&i.RequirementsOffset,
 		&i.NotificationOffsets,
 	)
 	return i, err
@@ -200,27 +210,30 @@ UPDATE guild_config
 SET
     enabled = ?1,
     channel_access_offset = ?2,
-    channel_delete_offset = ?3,
-    participation_confirm_offset = ?4,
-    notification_offsets = ?5
-WHERE guild_id = ?6
+    event_creation_enabled = ?3,
+    channel_delete_offset = ?4,
+    requirements_offset = ?5,
+    notification_offsets = ?6
+WHERE guild_id = ?7
 `
 
 type UpdateGuildConfigParams struct {
-	Enabled                    int64  `db:"enabled"`
-	ChannelAccessOffset        int64  `db:"channel_access_offset"`
-	ChannelDeleteOffset        int64  `db:"channel_delete_offset"`
-	ParticipationConfirmOffset int64  `db:"participation_confirm_offset"`
-	NotificationOffsets        string `db:"notification_offsets"`
-	GuildID                    string `db:"guild_id"`
+	Enabled              int64  `db:"enabled"`
+	ChannelAccessOffset  int64  `db:"channel_access_offset"`
+	EventCreationEnabled int64  `db:"event_creation_enabled"`
+	ChannelDeleteOffset  int64  `db:"channel_delete_offset"`
+	RequirementsOffset   int64  `db:"requirements_offset"`
+	NotificationOffsets  string `db:"notification_offsets"`
+	GuildID              string `db:"guild_id"`
 }
 
 func (q *Queries) UpdateGuildConfig(ctx context.Context, arg UpdateGuildConfigParams) error {
 	_, err := q.exec(ctx, q.updateGuildConfigStmt, updateGuildConfig,
 		arg.Enabled,
 		arg.ChannelAccessOffset,
+		arg.EventCreationEnabled,
 		arg.ChannelDeleteOffset,
-		arg.ParticipationConfirmOffset,
+		arg.RequirementsOffset,
 		arg.NotificationOffsets,
 		arg.GuildID,
 	)

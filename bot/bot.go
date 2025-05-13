@@ -140,6 +140,7 @@ func New(
 
 	// admin commands
 	r.AddFunc("configure", bot.commandGuildConfigure)
+	r.AddFunc("configuration", bot.commandGuildConfiguration)
 
 	// admin + user commands
 	r.AddFunc("schedule-match", bot.commandScheduleMatch)
@@ -221,6 +222,15 @@ func (b *Bot) Queries(ctx context.Context) (q *sqlc.Queries, err error) {
 func (b *Bot) overrideCommands() error {
 	var userCommandList = []api.CreateCommandData{
 		{
+			Name:           "configuration",
+			Description:    "Get the current server configuration",
+			NoDMPermission: true,
+			DefaultMemberPermissions: discord.NewPermissions(
+				discord.PermissionAdministrator,
+			),
+			Options: []discord.CommandOption{},
+		},
+		{
 			Name:           "configure",
 			Description:    "Configure the bot for the current guild",
 			NoDMPermission: true,
@@ -230,35 +240,33 @@ func (b *Bot) overrideCommands() error {
 			Options: []discord.CommandOption{
 				&discord.StringOption{
 					OptionName:  "channel_access_offset",
-					Description: "How long before the match the user can access the mach channel, default: 168h",
+					Description: "How long before the match the user can access the mach channel",
+					MinLength:   option.NewInt(2),
+					MaxLength:   option.NewInt(11),
+					Required:    true,
+				},
+				&discord.BooleanOption{
+					OptionName:  "event_creation_enabled",
+					Description: "Automatically reate scheduled events for matches that have a streamer and stream_url",
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName:  "notification_offsets",
+					Description: "Intervals at which to remind before a match e.g. 24h,1h,15m,5m,30s or empty for no defaults",
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName:  "requirements_offset",
+					Description: "Time before the match until which the participation requirements need to be met",
 					MinLength:   option.NewInt(2),
 					MaxLength:   option.NewInt(11),
 					Required:    true,
 				},
 				&discord.StringOption{
-					OptionName: "participation_confirm_offset",
-					Description: fmt.Sprintf(
-						"Deadline for participation confirmation, default: %s",
-						b.defaulRequirementsOffset,
-					),
-					MinLength: option.NewInt(2),
-					MaxLength: option.NewInt(11),
-					Required:  true,
-				},
-				&discord.StringOption{
-					OptionName: "channel_delete_offset",
-					Description: fmt.Sprintf(
-						"Deadline after the match when the channel is deleted, default: %s",
-						b.defaultChannelDeleteOffset,
-					),
-					MinLength: option.NewInt(2),
-					MaxLength: option.NewInt(11),
-					Required:  true,
-				},
-				&discord.StringOption{
-					OptionName:  "notification_offsets",
-					Description: "List of default reminder intervals to remind players before a match, e.g. 24h,1h,15m,5m,30s",
+					OptionName:  "channel_delete_offset",
+					Description: "Deadline after the match at which the channel is deleted",
 					MinLength:   option.NewInt(2),
+					MaxLength:   option.NewInt(11),
 					Required:    true,
 				},
 			},
@@ -275,9 +283,9 @@ func (b *Bot) overrideCommands() error {
 			Options: []discord.CommandOption{
 				&discord.StringOption{
 					OptionName:  "scheduled_at",
-					Description: fmt.Sprintf("Time when the match starts. Must be in this format: %s", parse.LayoutDateTimeWithZone),
-					MinLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
-					MaxLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
+					Description: fmt.Sprintf("Time when the match starts. Must be in this format: %s", parse.LayoutDateTime),
+					MinLength:   option.NewInt(len(parse.LayoutDateTime)),
+					MaxLength:   option.NewInt(len(parse.LayoutDateTime)),
 					Required:    true,
 				},
 				&discord.StringOption{
@@ -377,9 +385,9 @@ func (b *Bot) overrideCommands() error {
 				},
 				&discord.StringOption{
 					OptionName:  "notify_at",
-					Description: fmt.Sprintf("Time when the notification is triggered. Must be in this format: %s", parse.LayoutDateTimeWithZone),
-					MinLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
-					MaxLength:   option.NewInt(len(parse.LayoutDateTimeWithZone)),
+					Description: fmt.Sprintf("Time when the notification is triggered. Must be in this format: %s", parse.LayoutDateTime),
+					MinLength:   option.NewInt(len(parse.LayoutDateTime)),
+					MaxLength:   option.NewInt(len(parse.LayoutDateTime)),
 					Required:    true,
 				},
 				&discord.StringOption{

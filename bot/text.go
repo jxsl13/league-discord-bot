@@ -6,6 +6,7 @@ import (
 
 	"github.com/diamondburned/arikawa/v3/api"
 	"github.com/diamondburned/arikawa/v3/discord"
+	"github.com/jxs13/league-discord-bot/internal/model"
 )
 
 func FormatNotification(
@@ -13,7 +14,7 @@ func FormatNotification(
 	suffix string,
 	teamRoleIDs []discord.RoleID,
 	modUserIDs []discord.UserID,
-	streamers []Streamer,
+	streamers []model.Streamer,
 	participants map[discord.RoleID][]discord.UserID,
 ) api.SendMessageData {
 
@@ -119,7 +120,7 @@ func FormatNotification(
 func AllowedMentions(
 	teamRoleIDs []discord.RoleID,
 	modUserIDs []discord.UserID,
-	streamers []Streamer,
+	streamers []model.Streamer,
 	participants map[discord.RoleID][]discord.UserID,
 ) *api.AllowedMentions {
 
