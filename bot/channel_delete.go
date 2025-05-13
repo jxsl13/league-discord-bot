@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/diamondburned/arikawa/v3/api"
 	"github.com/diamondburned/arikawa/v3/discord"
@@ -46,7 +45,7 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 				}
 
 				err = b.state.DeleteScheduledEvent(guildID, eventID)
-				if err != nil && !discordutils.IsStatus(err, http.StatusNotFound) {
+				if err != nil && !discordutils.IsStatus4XX(err) {
 					return fmt.Errorf("error deleting scheduled event %s in guild %s: %w", eventID, guildID, err)
 				}
 			}

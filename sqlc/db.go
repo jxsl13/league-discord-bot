@@ -204,6 +204,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.rescheduleMatchStmt, err = db.PrepareContext(ctx, rescheduleMatch); err != nil {
 		return nil, fmt.Errorf("error preparing query RescheduleMatch: %w", err)
 	}
+	if q.resetEventIDStmt, err = db.PrepareContext(ctx, resetEventID); err != nil {
+		return nil, fmt.Errorf("error preparing query ResetEventID: %w", err)
+	}
 	if q.updateCategoryIdStmt, err = db.PrepareContext(ctx, updateCategoryId); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateCategoryId: %w", err)
 	}
@@ -524,6 +527,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing rescheduleMatchStmt: %w", cerr)
 		}
 	}
+	if q.resetEventIDStmt != nil {
+		if cerr := q.resetEventIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing resetEventIDStmt: %w", cerr)
+		}
+	}
 	if q.updateCategoryIdStmt != nil {
 		if cerr := q.updateCategoryIdStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateCategoryIdStmt: %w", cerr)
@@ -648,6 +656,7 @@ type Queries struct {
 	removeGuildRoleAccessStmt                  *sql.Stmt
 	removeGuildUserAccessStmt                  *sql.Stmt
 	rescheduleMatchStmt                        *sql.Stmt
+	resetEventIDStmt                           *sql.Stmt
 	updateCategoryIdStmt                       *sql.Stmt
 	updateGuildConfigStmt                      *sql.Stmt
 	updateMatchChannelAccessibilityStmt        *sql.Stmt
@@ -719,6 +728,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		removeGuildRoleAccessStmt:                  q.removeGuildRoleAccessStmt,
 		removeGuildUserAccessStmt:                  q.removeGuildUserAccessStmt,
 		rescheduleMatchStmt:                        q.rescheduleMatchStmt,
+		resetEventIDStmt:                           q.resetEventIDStmt,
 		updateCategoryIdStmt:                       q.updateCategoryIdStmt,
 		updateGuildConfigStmt:                      q.updateGuildConfigStmt,
 		updateMatchChannelAccessibilityStmt:        q.updateMatchChannelAccessibilityStmt,

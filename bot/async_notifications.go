@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/diamondburned/arikawa/v3/api"
@@ -120,7 +119,7 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 
 				_, err = b.state.SendMessageComplex(channelID, msg)
 				if err != nil {
-					if discordutils.IsStatus(err, http.StatusNotFound) {
+					if discordutils.IsStatus4XX(err) {
 						// channel not found -> delete match manually
 						log.Printf("channel %s not found, adding to orphaned list for deletion", channelID)
 						orphanedMatches = append(orphanedMatches, channelIDStr)

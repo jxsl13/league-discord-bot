@@ -16,7 +16,7 @@ func New() *Config {
 		DSN:                 filepath.Join(filepath.Dir(os.Args[0]), "league.db"),
 		ChannelAccessOffset: 7 * 24 * time.Hour,
 		RequirementsOffset:  24 * time.Hour,
-		ChannelDeleteOffset: 24 * time.Hour,
+		ChannelDeleteOffset: 1 * time.Hour,
 		AsyncLoopInterval:   15 * time.Second,
 		BackoffMinDuration:  5 * time.Second,
 		ReminderIntervals:   []time.Duration{24 * time.Hour, 1 * time.Hour, 15 * time.Minute, 5 * time.Minute, 30 * time.Second},

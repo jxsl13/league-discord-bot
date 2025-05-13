@@ -138,3 +138,12 @@ ORDER BY channel_delete_at ASC;
 SELECT COUNT(channel_id) AS count
 FROM matches
 WHERE guild_id = :guild_id;
+
+
+-- name: ResetEventID :exec
+UPDATE matches
+SET
+    event_id = ''
+WHERE guild_id = :guild_id
+AND event_id = :event_id;
+

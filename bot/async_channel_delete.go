@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/diamondburned/arikawa/v3/api"
@@ -71,7 +70,7 @@ func (b *Bot) asyncDeleteExpiredChannels(ctx context.Context) (d time.Duration, 
 			}
 
 			err = b.state.DeleteScheduledEvent(guildID, eventID)
-			if err != nil && !discordutils.IsStatus(err, http.StatusNotFound) {
+			if err != nil && !discordutils.IsStatus4XX(err) {
 				return 0, fmt.Errorf("error deleting scheduled event %s in guild %s: %w", eventID, del.GuildID, err)
 			}
 		}
@@ -88,7 +87,7 @@ func (b *Bot) asyncDeleteExpiredChannels(ctx context.Context) (d time.Duration, 
 		)
 		err = b.state.DeleteChannel(cid, api.AuditLogReason(reason))
 		if err != nil {
-			if discordutils.IsStatus(err, http.StatusNotFound) {
+			if discordutils.IsStatus4XX(err) {
 				// not found -> delete match manually
 				log.Printf("channel %s not found, adding to orphaned list for deletion", cid)
 				orphanedMatches = append(orphanedMatches, del.ChannelID)

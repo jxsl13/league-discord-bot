@@ -422,6 +422,24 @@ func (q *Queries) RescheduleMatch(ctx context.Context, arg RescheduleMatchParams
 	return err
 }
 
+const resetEventID = `-- name: ResetEventID :exec
+UPDATE matches
+SET
+    event_id = ''
+WHERE guild_id = ?1
+AND event_id = ?2
+`
+
+type ResetEventIDParams struct {
+	GuildID string `db:"guild_id"`
+	EventID string `db:"event_id"`
+}
+
+func (q *Queries) ResetEventID(ctx context.Context, arg ResetEventIDParams) error {
+	_, err := q.exec(ctx, q.resetEventIDStmt, resetEventID, arg.GuildID, arg.EventID)
+	return err
+}
+
 const updateMatchChannelAccessibility = `-- name: UpdateMatchChannelAccessibility :exec
 UPDATE matches
 SET

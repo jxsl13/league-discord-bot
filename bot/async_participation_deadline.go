@@ -84,7 +84,7 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 				teamRoleIDs...,
 			)
 			if err != nil {
-				if discordutils.IsStatus(err, http.StatusNotFound) {
+				if discordutils.IsStatus4XX(err) {
 					// channel not found -> delete match manually
 					log.Printf("channel %s or message %s not found, adding to orphaned list for deletion", channelID, msgID)
 					orphanedMatches = append(orphanedMatches, match.ChannelID)
@@ -120,7 +120,7 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 					event, err := b.state.EditScheduledEvent(guildID, eventID, reason, api.EditScheduledEventData{
 						Status: discord.CancelledEvent,
 					})
-					if err != nil && !discordutils.IsStatus(err, http.StatusNotFound) {
+					if err != nil && !discordutils.IsStatus4XX(err) {
 						return fmt.Errorf("error deleting scheduled event %s in guild %s: %w", eventID, guildID, err)
 					}
 					log.Printf("cancelled scheduled event %s in guild %s, reason: %s", event.ID, guildID, reason)
@@ -128,7 +128,7 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 
 				_, err := b.state.SendMessageComplex(channelID, msg)
 				if err != nil {
-					if discordutils.IsStatus(err, http.StatusNotFound) {
+					if discordutils.IsStatus4XX(err) {
 						// channel not found -> delete match manually
 						log.Printf("channel %s not found, adding to orphaned list for deletion", channelID)
 						orphanedMatches = append(orphanedMatches, match.ChannelID)
@@ -150,7 +150,7 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 
 			_, err = b.state.SendMessageComplex(channelID, msg)
 			if err != nil {
-				if discordutils.IsStatus(err, http.StatusNotFound) {
+				if discordutils.IsStatus4XX(err) {
 					// channel not found -> delete match manually
 					log.Printf("channel %s not found, adding to orphaned list for deletion", channelID)
 					orphanedMatches = append(orphanedMatches, match.ChannelID)

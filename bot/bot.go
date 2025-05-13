@@ -136,6 +136,9 @@ func New(
 	s.AddHandler(bot.handleAddParticipationReaction)
 	s.AddHandler(bot.handleRemoveParticipationReaction)
 
+	s.AddHandler(bot.handleScheduledEventDelete)
+	s.AddHandler(bot.handleScheduledEventUpdate)
+
 	s.AddHandler(bot.handleAutocompletionLocationInteraction)
 
 	r := cmdroute.NewRouter()

@@ -42,7 +42,7 @@ Environment variables:
   REMINDER_INTERVALS             default guild configuration list of reminder intervals to remind players before a match, e.g. 24h,1h,15m,5m,30s
   GUILD_CHANNEL_ACCESS_OFFSET    default time offset for granting access to channels before a match (default: "168h0m0s")
   REQUIREMENTS_OFFSET            default time offset for participation requirements to be met before a match (default: "24h0m0s")
-  GUILD_CHANNEL_DELETE_OFFSET    default time offset for deleting channels after a match (default: "24h0m0s")
+  GUILD_CHANNEL_DELETE_OFFSET    default time offset for deleting channels after a match (default: "1h0m0s")
 
 Usage:
   league-discord-bot [flags]

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -64,7 +63,7 @@ func (b *Bot) asyncGrantChannelAccess(ctx context.Context) (d time.Duration, err
 		for _, ac := range accessible {
 			eventParam, err := b.grantSingleChannelAccess(ctx, q, ac)
 			if err != nil {
-				if discordutils.IsStatus(err, http.StatusNotFound) {
+				if discordutils.IsStatus4XX(err) {
 					orphanedMatches = append(orphanedMatches, ac.ChannelID)
 					continue
 				}
@@ -317,7 +316,7 @@ func (b *Bot) createGuildEvent(ctx context.Context, q *sqlc.Queries, param *Guil
 	})
 	if err != nil {
 		// event is somehow in the past, which is why we omit creating the scheduled event again.
-		if discordutils.IsStatus(err, http.StatusBadRequest) {
+		if discordutils.IsStatus4XX(err) {
 			log.Println("event is in the past, not creating scheduled event")
 			return nil
 		}
