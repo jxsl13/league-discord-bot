@@ -136,6 +136,8 @@ func New(
 	s.AddHandler(bot.handleAddParticipationReaction)
 	s.AddHandler(bot.handleRemoveParticipationReaction)
 
+	s.AddHandler(bot.handleAutocompletionLocationInteraction)
+
 	r := cmdroute.NewRouter()
 
 	// admin commands
@@ -289,10 +291,11 @@ func (b *Bot) overrideCommands() error {
 					Required:    true,
 				},
 				&discord.StringOption{
-					OptionName:  "location",
-					Description: "Timzone location, e.g. Europe/Berlin.",
-					MinLength:   option.NewInt(1),
-					Required:    true,
+					OptionName:   "location",
+					Description:  "Timzone location, e.g. Europe/Berlin.",
+					MinLength:    option.NewInt(1),
+					Required:     true,
+					Autocomplete: true,
 				},
 				&discord.RoleOption{
 					OptionName:  "team_1_role",
@@ -391,10 +394,11 @@ func (b *Bot) overrideCommands() error {
 					Required:    true,
 				},
 				&discord.StringOption{
-					OptionName:  "location",
-					Description: "Timzone location, e.g. Europe/Berlin.",
-					MinLength:   option.NewInt(1),
-					Required:    true,
+					OptionName:   "location",
+					Description:  "Timzone location, e.g. Europe/Berlin.",
+					MinLength:    option.NewInt(1),
+					Required:     true,
+					Autocomplete: true,
 				},
 				&discord.StringOption{
 					OptionName:  "custom_text",
