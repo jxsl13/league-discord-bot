@@ -14,12 +14,7 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
-	_ "modernc.org/sqlite"
 )
-
-func init() {
-	database.Register("sqlite", &sqliteDriver{})
-}
 
 var (
 	DefaultMigrationsTable = "schema_migrations"
