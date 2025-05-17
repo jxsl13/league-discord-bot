@@ -1,7 +1,7 @@
-FROM golang:alpine as build
+FROM golang:alpine AS build
 
 
-LABEL maintainer "github.com/jxsl13"
+LABEL maintainer="github.com/jxsl13"
 
 RUN apk --update add git openssh && \
     rm -rf /var/lib/apt/lists/* && \
@@ -15,7 +15,7 @@ COPY go.* ./
 RUN CGO_ENABLED=0 go build -a -ldflags '-w -extldflags "-static"' -o twstatus-bot .
 
 
-FROM alpine:latest as minimal
+FROM alpine:latest AS minimal
 
 
 WORKDIR /app
