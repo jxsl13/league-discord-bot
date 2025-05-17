@@ -32,6 +32,9 @@ type Bot struct {
 	defaultChannelAccessOffset time.Duration
 	defaulRequirementsOffset   time.Duration
 	defaultChannelDeleteOffset time.Duration
+
+	loopInterval time.Duration
+	minBackoff   time.Duration
 }
 
 // New requires a discord bot token and returns a Bot instance.
@@ -58,6 +61,8 @@ func New(
 		defaultChannelAccessOffset: defaultChannelAccessOffset,
 		defaulRequirementsOffset:   defaulRequirementsOffset,
 		defaultChannelDeleteOffset: defaultChannelDeleteOffset,
+		loopInterval:               loopInterval,
+		minBackoff:                 minBackoff,
 	}
 
 	s.AddIntents(
