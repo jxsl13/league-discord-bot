@@ -18,7 +18,6 @@ import (
 )
 
 func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err error) {
-	log.Println("checking for due notifications")
 	started := time.Now()
 	defer func() {
 		if err != nil {

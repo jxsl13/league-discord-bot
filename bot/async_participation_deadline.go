@@ -18,7 +18,6 @@ import (
 )
 
 func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Duration, err error) {
-	log.Println("checking for due participation requirements requirements")
 	defer func() {
 		if err != nil {
 			log.Printf("error in check participation requirements routine: %v", err)

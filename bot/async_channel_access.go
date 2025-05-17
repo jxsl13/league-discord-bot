@@ -36,7 +36,6 @@ var (
 )
 
 func (b *Bot) asyncGrantChannelAccess(ctx context.Context) (d time.Duration, err error) {
-	log.Println("checking for channel access changes")
 	defer func() {
 		if err != nil {
 			log.Printf("error in channel access routine: %v", err)
@@ -70,7 +69,7 @@ func (b *Bot) asyncGrantChannelAccess(ctx context.Context) (d time.Duration, err
 
 				return fmt.Errorf("error giving channel access: %w", err)
 			}
-			log.Printf("granted access to channel %s", ac.ChannelID)
+			log.Printf("granted access to channel %s, event scheduled at %s", ac.ChannelID, time.Unix(eventParam.ScheduledAt, 0))
 
 			guildAccessible[eventParam.GuildID] = append(guildAccessible[eventParam.GuildID], eventParam)
 		}

@@ -197,9 +197,16 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 		}()
 
 		var (
-			vs           = ""
-			confirmation = ""
+			vs                  = ""
+			confirmation        = ""
+			channelAccessibleAt = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ChannelAccessOffset))
+			channelDeleteAt     = scheduledAt.Add(time.Second * time.Duration(cfg.ChannelDeleteOffset))
 		)
+		if channelAccessibleAt.Before(now) {
+			// if the channel accessible time is in the past, set it to now
+			channelAccessibleAt = now
+		}
+
 		if participantsPerTeam > 0 {
 			vs = fmt.Sprintf("(%don%d)", participantsPerTeam, participantsPerTeam)
 			confirmation = fmt.Sprintf("\n\nPlease react with %s to confirm your participation.", ReactionEmoji)
@@ -208,11 +215,13 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 		msg, err := b.state.SendMessage(
 			c.ID,
 			fmt.Sprintf(
-				"Match between %s and %s %s scheduled at %s%s",
+				"Match between %s and %s %s scheduled at %s\n\nThis channel is accessible from %s until %s%s",
 				team1.Mention(),
 				team2.Mention(),
 				vs,
 				format.DiscordTimestamp(scheduledAt),
+				format.DiscordTimestamp(channelAccessibleAt),
+				format.DiscordTimestamp(channelDeleteAt),
 				confirmation,
 			),
 		)
@@ -240,16 +249,16 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			channelID    = c.ID
 			channelIDStr = channelID.String()
 			// epoch seconds
-			channelAccessibleAt     = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.ChannelAccessOffset)).Unix()
-			channelDeleteAt         = scheduledAt.Add(time.Second * time.Duration(cfg.ChannelDeleteOffset)).Unix()
+			channelAccessibleAtUnix = channelAccessibleAt.Unix()
+			channelDeleteAtUnix     = channelDeleteAt.Unix()
 			participatonReqDeadline = scheduledAt.Add(-1 * time.Second * time.Duration(cfg.RequirementsOffset)).Unix()
 		)
 
 		err = q.AddMatch(ctx, sqlc.AddMatchParams{
 			GuildID:             guildID.String(),
 			ChannelID:           channelIDStr,
-			ChannelAccessibleAt: max(nowUnix, channelAccessibleAt),
-			ChannelDeleteAt:     max(nowUnix, channelDeleteAt),
+			ChannelAccessibleAt: channelAccessibleAtUnix,
+			ChannelDeleteAt:     max(nowUnix, channelDeleteAtUnix),
 			MessageID:           msg.ID.String(),
 			ScheduledAt:         scheduledAt.Unix(),
 			CreatedAt:           nowUnix,
@@ -338,7 +347,8 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 					c.ID.Mention(),
 				),
 			),
-			Flags:           discord.EphemeralMessage,
+			Flags: discord.EphemeralMessage,
+
 			AllowedMentions: &api.AllowedMentions{ /* none */ },
 		}
 		return nil

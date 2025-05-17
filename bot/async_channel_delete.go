@@ -15,7 +15,6 @@ import (
 )
 
 func (b *Bot) asyncDeleteExpiredChannels(ctx context.Context) (d time.Duration, err error) {
-	log.Println("checking for expired match channels")
 	defer func() {
 		if err != nil {
 			log.Printf("failed to delete expired match channels: %v", err)
