@@ -85,5 +85,15 @@ FROM guild_config
 WHERE category_id = :category_id
 LIMIT 1;
 
+-- name: CountEnabledGuilds :one
+SELECT COUNT(guild_id)
+FROM guild_config
+WHERE enabled = 1;
+
+-- name: CountDisabledGuilds :one
+SELECT COUNT(guild_id)
+FROM guild_config
+WHERE enabled = 0;
+
 
 

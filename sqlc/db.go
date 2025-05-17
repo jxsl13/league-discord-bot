@@ -63,6 +63,18 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.closeParticipationEntryStmt, err = db.PrepareContext(ctx, closeParticipationEntry); err != nil {
 		return nil, fmt.Errorf("error preparing query CloseParticipationEntry: %w", err)
 	}
+	if q.countAllMatchesStmt, err = db.PrepareContext(ctx, countAllMatches); err != nil {
+		return nil, fmt.Errorf("error preparing query CountAllMatches: %w", err)
+	}
+	if q.countAllNotificationsStmt, err = db.PrepareContext(ctx, countAllNotifications); err != nil {
+		return nil, fmt.Errorf("error preparing query CountAllNotifications: %w", err)
+	}
+	if q.countDisabledGuildsStmt, err = db.PrepareContext(ctx, countDisabledGuilds); err != nil {
+		return nil, fmt.Errorf("error preparing query CountDisabledGuilds: %w", err)
+	}
+	if q.countEnabledGuildsStmt, err = db.PrepareContext(ctx, countEnabledGuilds); err != nil {
+		return nil, fmt.Errorf("error preparing query CountEnabledGuilds: %w", err)
+	}
 	if q.countMatchesStmt, err = db.PrepareContext(ctx, countMatches); err != nil {
 		return nil, fmt.Errorf("error preparing query CountMatches: %w", err)
 	}
@@ -290,6 +302,26 @@ func (q *Queries) Close() error {
 	if q.closeParticipationEntryStmt != nil {
 		if cerr := q.closeParticipationEntryStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing closeParticipationEntryStmt: %w", cerr)
+		}
+	}
+	if q.countAllMatchesStmt != nil {
+		if cerr := q.countAllMatchesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing countAllMatchesStmt: %w", cerr)
+		}
+	}
+	if q.countAllNotificationsStmt != nil {
+		if cerr := q.countAllNotificationsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing countAllNotificationsStmt: %w", cerr)
+		}
+	}
+	if q.countDisabledGuildsStmt != nil {
+		if cerr := q.countDisabledGuildsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing countDisabledGuildsStmt: %w", cerr)
+		}
+	}
+	if q.countEnabledGuildsStmt != nil {
+		if cerr := q.countEnabledGuildsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing countEnabledGuildsStmt: %w", cerr)
 		}
 	}
 	if q.countMatchesStmt != nil {
@@ -609,6 +641,10 @@ type Queries struct {
 	addNotificationStmt                        *sql.Stmt
 	addParticipationRequirementsStmt           *sql.Stmt
 	closeParticipationEntryStmt                *sql.Stmt
+	countAllMatchesStmt                        *sql.Stmt
+	countAllNotificationsStmt                  *sql.Stmt
+	countDisabledGuildsStmt                    *sql.Stmt
+	countEnabledGuildsStmt                     *sql.Stmt
 	countMatchesStmt                           *sql.Stmt
 	countNotificationsStmt                     *sql.Stmt
 	decreaseMatchTeamConfirmedParticipantsStmt *sql.Stmt
@@ -666,23 +702,27 @@ type Queries struct {
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                               tx,
-		tx:                               tx,
-		addGuildConfigStmt:               q.addGuildConfigStmt,
-		addGuildRoleReadAccessStmt:       q.addGuildRoleReadAccessStmt,
-		addGuildRoleWriteAccessStmt:      q.addGuildRoleWriteAccessStmt,
-		addGuildUserAccessStmt:           q.addGuildUserAccessStmt,
-		addGuildUserWriteAccessStmt:      q.addGuildUserWriteAccessStmt,
-		addMatchStmt:                     q.addMatchStmt,
-		addMatchModeratorStmt:            q.addMatchModeratorStmt,
-		addMatchStreamerStmt:             q.addMatchStreamerStmt,
-		addMatchTeamStmt:                 q.addMatchTeamStmt,
-		addMatchTeamResultsStmt:          q.addMatchTeamResultsStmt,
-		addNotificationStmt:              q.addNotificationStmt,
-		addParticipationRequirementsStmt: q.addParticipationRequirementsStmt,
-		closeParticipationEntryStmt:      q.closeParticipationEntryStmt,
-		countMatchesStmt:                 q.countMatchesStmt,
-		countNotificationsStmt:           q.countNotificationsStmt,
+		db:                                         tx,
+		tx:                                         tx,
+		addGuildConfigStmt:                         q.addGuildConfigStmt,
+		addGuildRoleReadAccessStmt:                 q.addGuildRoleReadAccessStmt,
+		addGuildRoleWriteAccessStmt:                q.addGuildRoleWriteAccessStmt,
+		addGuildUserAccessStmt:                     q.addGuildUserAccessStmt,
+		addGuildUserWriteAccessStmt:                q.addGuildUserWriteAccessStmt,
+		addMatchStmt:                               q.addMatchStmt,
+		addMatchModeratorStmt:                      q.addMatchModeratorStmt,
+		addMatchStreamerStmt:                       q.addMatchStreamerStmt,
+		addMatchTeamStmt:                           q.addMatchTeamStmt,
+		addMatchTeamResultsStmt:                    q.addMatchTeamResultsStmt,
+		addNotificationStmt:                        q.addNotificationStmt,
+		addParticipationRequirementsStmt:           q.addParticipationRequirementsStmt,
+		closeParticipationEntryStmt:                q.closeParticipationEntryStmt,
+		countAllMatchesStmt:                        q.countAllMatchesStmt,
+		countAllNotificationsStmt:                  q.countAllNotificationsStmt,
+		countDisabledGuildsStmt:                    q.countDisabledGuildsStmt,
+		countEnabledGuildsStmt:                     q.countEnabledGuildsStmt,
+		countMatchesStmt:                           q.countMatchesStmt,
+		countNotificationsStmt:                     q.countNotificationsStmt,
 		decreaseMatchTeamConfirmedParticipantsStmt: q.decreaseMatchTeamConfirmedParticipantsStmt,
 		deleteAllMatchModeratorsStmt:               q.deleteAllMatchModeratorsStmt,
 		deleteAllMatchStreamersStmt:                q.deleteAllMatchStreamersStmt,

@@ -73,8 +73,20 @@ func (q *Queries) AddMatch(ctx context.Context, arg AddMatchParams) error {
 	return err
 }
 
+const countAllMatches = `-- name: CountAllMatches :one
+SELECT COUNT(*) AS count
+FROM matches
+`
+
+func (q *Queries) CountAllMatches(ctx context.Context) (int64, error) {
+	row := q.queryRow(ctx, q.countAllMatchesStmt, countAllMatches)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countMatches = `-- name: CountMatches :one
-SELECT COUNT(channel_id) AS count
+SELECT COUNT(*) AS count
 FROM matches
 WHERE guild_id = ?1
 `

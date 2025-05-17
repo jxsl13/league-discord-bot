@@ -56,6 +56,32 @@ func (q *Queries) AddGuildConfig(ctx context.Context, arg AddGuildConfigParams) 
 	return err
 }
 
+const countDisabledGuilds = `-- name: CountDisabledGuilds :one
+SELECT COUNT(guild_id)
+FROM guild_config
+WHERE enabled = 0
+`
+
+func (q *Queries) CountDisabledGuilds(ctx context.Context) (int64, error) {
+	row := q.queryRow(ctx, q.countDisabledGuildsStmt, countDisabledGuilds)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countEnabledGuilds = `-- name: CountEnabledGuilds :one
+SELECT COUNT(guild_id)
+FROM guild_config
+WHERE enabled = 1
+`
+
+func (q *Queries) CountEnabledGuilds(ctx context.Context) (int64, error) {
+	row := q.queryRow(ctx, q.countEnabledGuildsStmt, countEnabledGuilds)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteGuildConfig = `-- name: DeleteGuildConfig :exec
 DELETE FROM guild_config
 WHERE guild_id = ?1

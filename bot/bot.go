@@ -129,6 +129,12 @@ func New(
 				},
 			)
 
+			bot.wg.Add(1)
+			go func() {
+				defer bot.wg.Done()
+				bot.asyncStatistics()
+			}()
+
 			log.Println("bot is ready")
 		})
 	})

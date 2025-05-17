@@ -135,10 +135,13 @@ ORDER BY channel_delete_at ASC;
 
 
 -- name: CountMatches :one
-SELECT COUNT(channel_id) AS count
+SELECT COUNT(*) AS count
 FROM matches
 WHERE guild_id = :guild_id;
 
+-- name: CountAllMatches :one
+SELECT COUNT(*) AS count
+FROM matches;
 
 -- name: ResetEventID :exec
 UPDATE matches

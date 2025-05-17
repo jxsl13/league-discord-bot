@@ -57,5 +57,8 @@ ORDER BY notify_at ASC;
 
 -- name: DeleteMatchNotifications :exec
 DELETE FROM notifications
-WHERE channel_id = :channel_id
+WHERE channel_id = :channel_id;
 
+-- name: CountAllNotifications :one
+SELECT COUNT(*)
+FROM notifications;
