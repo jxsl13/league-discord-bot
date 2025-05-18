@@ -8,6 +8,17 @@ type Access struct {
 	Permission string `db:"permission"`
 }
 
+type Announcement struct {
+	GuildID          string `db:"guild_id"`
+	StartsAt         int64  `db:"starts_at"`
+	EndsAt           int64  `db:"ends_at"`
+	ChannelID        string `db:"channel_id"`
+	Interval         int64  `db:"interval"`
+	LastAnnouncedAt  int64  `db:"last_announced_at"`
+	CustomTextBefore string `db:"custom_text_before"`
+	CustomTextAfter  string `db:"custom_text_after"`
+}
+
 type GuildConfig struct {
 	GuildID              string `db:"guild_id"`
 	Enabled              int64  `db:"enabled"`

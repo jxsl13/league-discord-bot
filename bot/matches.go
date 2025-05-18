@@ -42,7 +42,12 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 			return err
 		}
 
-		scheduledAt, err := options.FutureTimeInLocation("scheduled_at", "location", time.Minute, data.Options) // TODO: change check to options.MinTime
+		scheduledAt, err := options.FutureTimeInLocation(
+			"scheduled_at",
+			"location",
+			max(time.Minute, b.loopInterval*2),
+			data.Options,
+		)
 		if err != nil {
 			return err
 		}
@@ -219,9 +224,9 @@ func (b *Bot) commandScheduleMatch(ctx context.Context, data cmdroute.CommandDat
 				team1.Mention(),
 				team2.Mention(),
 				vs,
-				format.DiscordTimestamp(scheduledAt),
-				format.DiscordTimestamp(channelAccessibleAt),
-				format.DiscordTimestamp(channelDeleteAt),
+				format.DiscordLongDateTime(scheduledAt),
+				format.DiscordLongDateTime(channelAccessibleAt),
+				format.DiscordLongDateTime(channelDeleteAt),
 				confirmation,
 			),
 		)

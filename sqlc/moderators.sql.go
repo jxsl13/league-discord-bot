@@ -59,25 +59,25 @@ func (q *Queries) DeleteMatchModerator(ctx context.Context, arg DeleteMatchModer
 const deleteMatchModerators = `-- name: DeleteMatchModerators :exec
 DELETE FROM moderators
 WHERE channel_id = ?1
-AND user_id IN (/*SLICE::user_ids*/?)
+AND user_id IN (/*SLICE:user_id*/?)
 `
 
 type DeleteMatchModeratorsParams struct {
 	ChannelID string   `db:"channel_id"`
-	UserIds   []string `db:":user_ids"`
+	UserID    []string `db:"user_id"`
 }
 
 func (q *Queries) DeleteMatchModerators(ctx context.Context, arg DeleteMatchModeratorsParams) error {
 	query := deleteMatchModerators
 	var queryParams []interface{}
 	queryParams = append(queryParams, arg.ChannelID)
-	if len(arg.UserIds) > 0 {
-		for _, v := range arg.UserIds {
+	if len(arg.UserID) > 0 {
+		for _, v := range arg.UserID {
 			queryParams = append(queryParams, v)
 		}
-		query = strings.Replace(query, "/*SLICE::user_ids*/?", strings.Repeat(",?", len(arg.UserIds))[1:], 1)
+		query = strings.Replace(query, "/*SLICE:user_id*/?", strings.Repeat(",?", len(arg.UserID))[1:], 1)
 	} else {
-		query = strings.Replace(query, "/*SLICE::user_ids*/?", "NULL", 1)
+		query = strings.Replace(query, "/*SLICE:user_id*/?", "NULL", 1)
 	}
 	_, err := q.exec(ctx, nil, query, queryParams...)
 	return err

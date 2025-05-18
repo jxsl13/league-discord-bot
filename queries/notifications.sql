@@ -42,7 +42,7 @@ SELECT COUNT(*)
 FROM notifications
 WHERE channel_id = :channel_id;
 
--- name: ListDueNotifications :many
+-- name: ListNowDueNotifications :many
 SELECT
     channel_id,
     notify_at,

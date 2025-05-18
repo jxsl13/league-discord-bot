@@ -130,51 +130,6 @@ func (q *Queries) GetNotificationByOffset(ctx context.Context, arg GetNotificati
 	return i, err
 }
 
-const listDueNotifications = `-- name: ListDueNotifications :many
-SELECT
-    channel_id,
-    notify_at,
-    custom_text,
-    created_at,
-    created_by,
-    updated_at,
-    updated_by
-FROM notifications
-WHERE notify_at <= unixepoch('now')
-ORDER BY notify_at ASC
-`
-
-func (q *Queries) ListDueNotifications(ctx context.Context) ([]Notification, error) {
-	rows, err := q.query(ctx, q.listDueNotificationsStmt, listDueNotifications)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Notification{}
-	for rows.Next() {
-		var i Notification
-		if err := rows.Scan(
-			&i.ChannelID,
-			&i.NotifyAt,
-			&i.CustomText,
-			&i.CreatedAt,
-			&i.CreatedBy,
-			&i.UpdatedAt,
-			&i.UpdatedBy,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listNotifications = `-- name: ListNotifications :many
 SELECT channel_id, notify_at, custom_text
 FROM notifications
@@ -198,6 +153,51 @@ func (q *Queries) ListNotifications(ctx context.Context, channelID string) ([]Li
 	for rows.Next() {
 		var i ListNotificationsRow
 		if err := rows.Scan(&i.ChannelID, &i.NotifyAt, &i.CustomText); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNowDueNotifications = `-- name: ListNowDueNotifications :many
+SELECT
+    channel_id,
+    notify_at,
+    custom_text,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM notifications
+WHERE notify_at <= unixepoch('now')
+ORDER BY notify_at ASC
+`
+
+func (q *Queries) ListNowDueNotifications(ctx context.Context) ([]Notification, error) {
+	rows, err := q.query(ctx, q.listNowDueNotificationsStmt, listNowDueNotifications)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Notification{}
+	for rows.Next() {
+		var i Notification
+		if err := rows.Scan(
+			&i.ChannelID,
+			&i.NotifyAt,
+			&i.CustomText,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

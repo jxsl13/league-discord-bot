@@ -45,9 +45,9 @@ func TimeBetweenInLocation(datetimeName, locationName string, min, max time.Time
 	if t.Before(min) || t.After(max) {
 		return time.Time{}, fmt.Errorf("invalid parameter %q: must be between %s and %s, is %s",
 			datetimeName,
-			format.DiscordTimestamp(min),
-			format.DiscordTimestamp(max),
-			format.DiscordTimestamp(t),
+			format.DiscordLongDateTime(min),
+			format.DiscordLongDateTime(max),
+			format.DiscordLongDateTime(t),
 		)
 	}
 	return t, nil

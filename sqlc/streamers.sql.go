@@ -62,25 +62,25 @@ func (q *Queries) DeleteMatchStreamer(ctx context.Context, arg DeleteMatchStream
 const deleteMatchStreamers = `-- name: DeleteMatchStreamers :exec
 DELETE FROM streamers
 WHERE channel_id = ?1
-AND user_id IN (/*SLICE::user_ids*/?)
+AND user_id IN (/*SLICE:user_id*/?)
 `
 
 type DeleteMatchStreamersParams struct {
 	ChannelID string   `db:"channel_id"`
-	UserIds   []string `db:":user_ids"`
+	UserID    []string `db:"user_id"`
 }
 
 func (q *Queries) DeleteMatchStreamers(ctx context.Context, arg DeleteMatchStreamersParams) error {
 	query := deleteMatchStreamers
 	var queryParams []interface{}
 	queryParams = append(queryParams, arg.ChannelID)
-	if len(arg.UserIds) > 0 {
-		for _, v := range arg.UserIds {
+	if len(arg.UserID) > 0 {
+		for _, v := range arg.UserID {
 			queryParams = append(queryParams, v)
 		}
-		query = strings.Replace(query, "/*SLICE::user_ids*/?", strings.Repeat(",?", len(arg.UserIds))[1:], 1)
+		query = strings.Replace(query, "/*SLICE:user_id*/?", strings.Repeat(",?", len(arg.UserID))[1:], 1)
 	} else {
-		query = strings.Replace(query, "/*SLICE::user_ids*/?", "NULL", 1)
+		query = strings.Replace(query, "/*SLICE:user_id*/?", "NULL", 1)
 	}
 	_, err := q.exec(ctx, nil, query, queryParams...)
 	return err

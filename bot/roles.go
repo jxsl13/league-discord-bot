@@ -61,3 +61,25 @@ outer:
 
 	return result, nil
 }
+
+func (b *Bot) resolveRoleIDs(guildID discord.GuildID, roleIDs []discord.RoleID) (result map[discord.RoleID]discord.Role, err error) {
+
+	roles, err := b.state.Roles(guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	result = make(map[discord.RoleID]discord.Role, len(roleIDs))
+outer:
+	for _, id := range roleIDs {
+		for _, role := range roles {
+			if id == role.ID {
+				result[id] = role
+				continue outer
+			}
+		}
+		return nil, fmt.Errorf("role %s not found", id)
+	}
+
+	return result, nil
+}

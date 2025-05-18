@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/diamondburned/arikawa/v3/discord"
+	"github.com/jxs13/league-discord-bot/internal/discordutils"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
@@ -142,5 +143,20 @@ func (b *Bot) checkGuildEnabled(ctx context.Context, q *sqlc.Queries, guildID di
 		return errors.New("bot is disabled until it has sufficient permissions: you can reenable the bot by using the `configure` slash command")
 	}
 
+	return nil
+}
+
+func (b *Bot) checkIsGuildChannel(event *discord.InteractionEvent, channelID discord.ChannelID) error {
+	c, err := b.state.Channel(channelID)
+	if err != nil {
+		if discordutils.IsStatus4XX(err) {
+			return errors.New("channel not found or bot not in channel")
+		}
+		return err
+	}
+
+	if c.GuildID != event.GuildID {
+		return errors.New("channel must be in your server")
+	}
 	return nil
 }

@@ -68,12 +68,18 @@ func (b *Bot) printDailyStatistics() (err error) {
 			return err
 		}
 
+		numConfiguredAnnouncements, err := q.CountAnnouncements(ctx)
+		if err != nil {
+			return err
+		}
+
 		log.Println("daily statistics:")
 		log.Printf("  %d enabled guilds", enabledGuilds)
 		log.Printf("  %d disabled guilds", disabledGuilds)
 		log.Printf("  %d total guilds", enabledGuilds+disabledGuilds)
 		log.Printf("  %d total matches", numMatches)
 		log.Printf("  %d total notifications", numNotifications)
+		log.Printf("  %d total configured announcements", numConfiguredAnnouncements)
 
 		return nil
 	})

@@ -25,7 +25,7 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 		}
 	}()
 	err = b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
-		notifications, err := q.ListDueNotifications(ctx)
+		notifications, err := q.ListNowDueNotifications(ctx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				// no matches scheduled, nothing to send

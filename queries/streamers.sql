@@ -17,7 +17,7 @@ AND user_id = :user_id;
 -- name: DeleteMatchStreamers :exec
 DELETE FROM streamers
 WHERE channel_id = :channel_id
-AND user_id IN (sqlc.slice(':user_ids'));
+AND user_id IN (sqlc.slice('user_id'));
 
 -- name: DeleteAllMatchStreamers :exec
 DELETE FROM streamers

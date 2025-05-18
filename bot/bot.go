@@ -130,6 +130,18 @@ func New(
 			)
 
 			bot.wg.Add(1)
+			go timerutils.Loop(
+				bot.ctx,
+				minBackoff,
+				loopInterval,
+				bot.asyncAnnouncements,
+				func() {
+					log.Println("announcement routine stopped")
+					bot.wg.Done()
+				},
+			)
+
+			bot.wg.Add(1)
 			go func() {
 				defer bot.wg.Done()
 				bot.asyncStatistics()
@@ -160,12 +172,14 @@ func New(
 
 	// admin + user commands
 	r.AddFunc("schedule-match", bot.commandScheduleMatch)
-	// r.AddFunc("reschedule-match", bot.commandRescheduleMatch)
 
 	r.AddFunc("notification-list", bot.commandNotificationsList)
 	r.AddFunc("notification-delete", bot.commandNotificationsDelete)
 	r.AddFunc("notification-add", bot.commandNotificationsAdd)
-	// TODO: timezone auto completion: r.AddAutocompleterFunc()
+
+	r.AddFunc("announcements-enable", bot.commandAnnouncementsEnable)
+	r.AddFunc("announcements-disable", bot.commandAnnouncementsDisable)
+	r.AddFunc("announcements-configuration", bot.commandAnnouncementConfiguration)
 
 	s.AddInteractionHandler(r)
 
@@ -421,6 +435,75 @@ func (b *Bot) overrideCommands() error {
 				&discord.StringOption{
 					OptionName:  "custom_text",
 					Description: "Leave empty for a default generated message",
+					Required:    false,
+				},
+			},
+		},
+		{
+			Name:           "announcements-disable",
+			Description:    "Disable periodic (daily, weekly, monthly, etc.) announcements of scheduled matches",
+			NoDMPermission: true,
+			DefaultMemberPermissions: discord.NewPermissions(
+				discord.PermissionAdministrator,
+			),
+		},
+		{
+			Name:           "announcements-configuration",
+			Description:    "Get the current server announcement configuration",
+			NoDMPermission: true,
+			DefaultMemberPermissions: discord.NewPermissions(
+				discord.PermissionAdministrator,
+			),
+		},
+		{
+			Name:           "announcements-enable",
+			Description:    "Enable periodic announcements hourly, daily, weekly, monthly, etc. ahead of scheduled matches",
+			NoDMPermission: true,
+			DefaultMemberPermissions: discord.NewPermissions(
+				discord.PermissionAdministrator,
+			),
+			Options: []discord.CommandOption{
+				&discord.ChannelOption{
+					OptionName:  "announcement_channel",
+					Description: "Channel where the announcement should be sent to",
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName:  "starts_at",
+					Description: fmt.Sprintf("Time when the first announcement starts. Must be in this format: %s", parse.LayoutDateTime),
+					MinLength:   option.NewInt(len(parse.LayoutDateTime)),
+					MaxLength:   option.NewInt(len(parse.LayoutDateTime)),
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName:  "ends_at",
+					Description: fmt.Sprintf("Time when the announcements should stop. Must be in this format: %s", parse.LayoutDateTime),
+					MinLength:   option.NewInt(len(parse.LayoutDateTime)),
+					MaxLength:   option.NewInt(len(parse.LayoutDateTime)),
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName:   "location",
+					Description:  "Timzone location, e.g. Europe/Berlin.",
+					MinLength:    option.NewInt(1),
+					Required:     true,
+					Autocomplete: true,
+				},
+				&discord.StringOption{
+					OptionName:  "interval",
+					Description: "Interval at and for which the announcement should be sent. e.g. 24h (1 day), 168h (1 week)",
+					MinLength:   option.NewInt(2), // 1h is min
+					MaxLength:   option.NewInt(1), // 8760h00m00s is max
+					Required:    true,
+				},
+				&discord.StringOption{
+					OptionName:  "custom_text_before",
+					Description: "Custom text before the generated annoncement.",
+					Required:    false,
+				},
+				&discord.StringOption{
+					OptionName:  "custom_text_after",
+					Description: "Custom text after the generated annoncement.",
 					Required:    false,
 				},
 			},

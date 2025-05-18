@@ -35,6 +35,11 @@ func (b *Bot) commandNotificationsList(ctx context.Context, data cmdroute.Comman
 		}
 		channelIDStr := channelID.String()
 
+		err = b.checkIsGuildChannel(data.Event, channelID)
+		if err != nil {
+			return err
+		}
+
 		_, err = q.GetMatch(ctx, channelIDStr)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -60,7 +65,7 @@ func (b *Bot) commandNotificationsList(ctx context.Context, data cmdroute.Comman
 
 		// max allowed are 50
 		for i, n := range notifications {
-			sb.WriteString(fmt.Sprintf("%2d at %s", i+1, format.DiscordTimestamp(time.Unix(n.NotifyAt, 0))))
+			sb.WriteString(fmt.Sprintf("%2d at %s", i+1, format.DiscordLongDateTime(time.Unix(n.NotifyAt, 0))))
 			if n.CustomText != "" {
 				sb.WriteString("with custom text: ")
 				sb.WriteString(format.MarkdownInlineCodeBlock(n.CustomText))
@@ -97,6 +102,11 @@ func (b *Bot) commandNotificationsDelete(ctx context.Context, data cmdroute.Comm
 			return err
 		}
 		channelIDStr := channelID.String()
+
+		err = b.checkIsGuildChannel(data.Event, channelID)
+		if err != nil {
+			return err
+		}
 
 		n, err := options.MinMaxInteger("list_number", data.Options, 1, 50)
 		if err != nil {
@@ -157,6 +167,12 @@ func (b *Bot) commandNotificationsAdd(ctx context.Context, data cmdroute.Command
 			return err
 		}
 		channelIDStr := channelID.String()
+
+		err = b.checkIsGuildChannel(data.Event, channelID)
+		if err != nil {
+			return err
+		}
+
 		customText := data.Options.Find("custom_text").String()
 
 		match, err := q.GetMatch(ctx, channelIDStr)

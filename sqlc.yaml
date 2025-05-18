@@ -8,6 +8,7 @@ sql:
       "queries/moderators.sql",
       "queries/notifications.sql",
       "queries/participation_requirements.sql",
+      "queries/announcements.sql",
       "queries/streamers.sql",
       "queries/teams.sql"
     ]

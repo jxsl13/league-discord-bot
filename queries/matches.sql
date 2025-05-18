@@ -150,3 +150,22 @@ SET
 WHERE guild_id = :guild_id
 AND event_id = :event_id;
 
+
+-- name: ListGuildMatchesScheduledUntil :many
+SELECT
+    guild_id,
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    event_id,
+    scheduled_at,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+WHERE guild_id = :guild_id
+AND scheduled_at <= :scheduled_at
+ORDER BY scheduled_at ASC;

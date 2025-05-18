@@ -24,6 +24,9 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.addAnnouncementStmt, err = db.PrepareContext(ctx, addAnnouncement); err != nil {
+		return nil, fmt.Errorf("error preparing query AddAnnouncement: %w", err)
+	}
 	if q.addGuildConfigStmt, err = db.PrepareContext(ctx, addGuildConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query AddGuildConfig: %w", err)
 	}
@@ -63,11 +66,20 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.closeParticipationEntryStmt, err = db.PrepareContext(ctx, closeParticipationEntry); err != nil {
 		return nil, fmt.Errorf("error preparing query CloseParticipationEntry: %w", err)
 	}
+	if q.continueAnnouncementStmt, err = db.PrepareContext(ctx, continueAnnouncement); err != nil {
+		return nil, fmt.Errorf("error preparing query ContinueAnnouncement: %w", err)
+	}
+	if q.continueAnnouncementsStmt, err = db.PrepareContext(ctx, continueAnnouncements); err != nil {
+		return nil, fmt.Errorf("error preparing query ContinueAnnouncements: %w", err)
+	}
 	if q.countAllMatchesStmt, err = db.PrepareContext(ctx, countAllMatches); err != nil {
 		return nil, fmt.Errorf("error preparing query CountAllMatches: %w", err)
 	}
 	if q.countAllNotificationsStmt, err = db.PrepareContext(ctx, countAllNotifications); err != nil {
 		return nil, fmt.Errorf("error preparing query CountAllNotifications: %w", err)
+	}
+	if q.countAnnouncementsStmt, err = db.PrepareContext(ctx, countAnnouncements); err != nil {
+		return nil, fmt.Errorf("error preparing query CountAnnouncements: %w", err)
 	}
 	if q.countDisabledGuildsStmt, err = db.PrepareContext(ctx, countDisabledGuilds); err != nil {
 		return nil, fmt.Errorf("error preparing query CountDisabledGuilds: %w", err)
@@ -92,6 +104,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.deleteAllMatchTeamsStmt, err = db.PrepareContext(ctx, deleteAllMatchTeams); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteAllMatchTeams: %w", err)
+	}
+	if q.deleteAnnouncementStmt, err = db.PrepareContext(ctx, deleteAnnouncement); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteAnnouncement: %w", err)
 	}
 	if q.deleteGuildConfigStmt, err = db.PrepareContext(ctx, deleteGuildConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteGuildConfig: %w", err)
@@ -132,6 +147,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.disableGuildStmt, err = db.PrepareContext(ctx, disableGuild); err != nil {
 		return nil, fmt.Errorf("error preparing query DisableGuild: %w", err)
 	}
+	if q.getAnnouncementStmt, err = db.PrepareContext(ctx, getAnnouncement); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAnnouncement: %w", err)
+	}
 	if q.getGuildConfigStmt, err = db.PrepareContext(ctx, getGuildConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query GetGuildConfig: %w", err)
 	}
@@ -171,11 +189,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.isGuildEnabledStmt, err = db.PrepareContext(ctx, isGuildEnabled); err != nil {
 		return nil, fmt.Errorf("error preparing query IsGuildEnabled: %w", err)
 	}
-	if q.listDueNotificationsStmt, err = db.PrepareContext(ctx, listDueNotifications); err != nil {
-		return nil, fmt.Errorf("error preparing query ListDueNotifications: %w", err)
-	}
 	if q.listGuildMatchesStmt, err = db.PrepareContext(ctx, listGuildMatches); err != nil {
 		return nil, fmt.Errorf("error preparing query ListGuildMatches: %w", err)
+	}
+	if q.listGuildMatchesScheduledUntilStmt, err = db.PrepareContext(ctx, listGuildMatchesScheduledUntil); err != nil {
+		return nil, fmt.Errorf("error preparing query ListGuildMatchesScheduledUntil: %w", err)
 	}
 	if q.listGuildRoleAccessStmt, err = db.PrepareContext(ctx, listGuildRoleAccess); err != nil {
 		return nil, fmt.Errorf("error preparing query ListGuildRoleAccess: %w", err)
@@ -200,6 +218,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.listNowDeletableChannelsStmt, err = db.PrepareContext(ctx, listNowDeletableChannels); err != nil {
 		return nil, fmt.Errorf("error preparing query ListNowDeletableChannels: %w", err)
+	}
+	if q.listNowDueAnnouncementsStmt, err = db.PrepareContext(ctx, listNowDueAnnouncements); err != nil {
+		return nil, fmt.Errorf("error preparing query ListNowDueAnnouncements: %w", err)
+	}
+	if q.listNowDueNotificationsStmt, err = db.PrepareContext(ctx, listNowDueNotifications); err != nil {
+		return nil, fmt.Errorf("error preparing query ListNowDueNotifications: %w", err)
 	}
 	if q.listNowDueParticipationRequirementsStmt, err = db.PrepareContext(ctx, listNowDueParticipationRequirements); err != nil {
 		return nil, fmt.Errorf("error preparing query ListNowDueParticipationRequirements: %w", err)
@@ -239,6 +263,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.addAnnouncementStmt != nil {
+		if cerr := q.addAnnouncementStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addAnnouncementStmt: %w", cerr)
+		}
+	}
 	if q.addGuildConfigStmt != nil {
 		if cerr := q.addGuildConfigStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addGuildConfigStmt: %w", cerr)
@@ -304,6 +333,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing closeParticipationEntryStmt: %w", cerr)
 		}
 	}
+	if q.continueAnnouncementStmt != nil {
+		if cerr := q.continueAnnouncementStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing continueAnnouncementStmt: %w", cerr)
+		}
+	}
+	if q.continueAnnouncementsStmt != nil {
+		if cerr := q.continueAnnouncementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing continueAnnouncementsStmt: %w", cerr)
+		}
+	}
 	if q.countAllMatchesStmt != nil {
 		if cerr := q.countAllMatchesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing countAllMatchesStmt: %w", cerr)
@@ -312,6 +351,11 @@ func (q *Queries) Close() error {
 	if q.countAllNotificationsStmt != nil {
 		if cerr := q.countAllNotificationsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing countAllNotificationsStmt: %w", cerr)
+		}
+	}
+	if q.countAnnouncementsStmt != nil {
+		if cerr := q.countAnnouncementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing countAnnouncementsStmt: %w", cerr)
 		}
 	}
 	if q.countDisabledGuildsStmt != nil {
@@ -352,6 +396,11 @@ func (q *Queries) Close() error {
 	if q.deleteAllMatchTeamsStmt != nil {
 		if cerr := q.deleteAllMatchTeamsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteAllMatchTeamsStmt: %w", cerr)
+		}
+	}
+	if q.deleteAnnouncementStmt != nil {
+		if cerr := q.deleteAnnouncementStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteAnnouncementStmt: %w", cerr)
 		}
 	}
 	if q.deleteGuildConfigStmt != nil {
@@ -419,6 +468,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing disableGuildStmt: %w", cerr)
 		}
 	}
+	if q.getAnnouncementStmt != nil {
+		if cerr := q.getAnnouncementStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAnnouncementStmt: %w", cerr)
+		}
+	}
 	if q.getGuildConfigStmt != nil {
 		if cerr := q.getGuildConfigStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getGuildConfigStmt: %w", cerr)
@@ -484,14 +538,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing isGuildEnabledStmt: %w", cerr)
 		}
 	}
-	if q.listDueNotificationsStmt != nil {
-		if cerr := q.listDueNotificationsStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing listDueNotificationsStmt: %w", cerr)
-		}
-	}
 	if q.listGuildMatchesStmt != nil {
 		if cerr := q.listGuildMatchesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listGuildMatchesStmt: %w", cerr)
+		}
+	}
+	if q.listGuildMatchesScheduledUntilStmt != nil {
+		if cerr := q.listGuildMatchesScheduledUntilStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listGuildMatchesScheduledUntilStmt: %w", cerr)
 		}
 	}
 	if q.listGuildRoleAccessStmt != nil {
@@ -532,6 +586,16 @@ func (q *Queries) Close() error {
 	if q.listNowDeletableChannelsStmt != nil {
 		if cerr := q.listNowDeletableChannelsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listNowDeletableChannelsStmt: %w", cerr)
+		}
+	}
+	if q.listNowDueAnnouncementsStmt != nil {
+		if cerr := q.listNowDueAnnouncementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listNowDueAnnouncementsStmt: %w", cerr)
+		}
+	}
+	if q.listNowDueNotificationsStmt != nil {
+		if cerr := q.listNowDueNotificationsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listNowDueNotificationsStmt: %w", cerr)
 		}
 	}
 	if q.listNowDueParticipationRequirementsStmt != nil {
@@ -628,6 +692,7 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                                         DBTX
 	tx                                         *sql.Tx
+	addAnnouncementStmt                        *sql.Stmt
 	addGuildConfigStmt                         *sql.Stmt
 	addGuildRoleReadAccessStmt                 *sql.Stmt
 	addGuildRoleWriteAccessStmt                *sql.Stmt
@@ -641,8 +706,11 @@ type Queries struct {
 	addNotificationStmt                        *sql.Stmt
 	addParticipationRequirementsStmt           *sql.Stmt
 	closeParticipationEntryStmt                *sql.Stmt
+	continueAnnouncementStmt                   *sql.Stmt
+	continueAnnouncementsStmt                  *sql.Stmt
 	countAllMatchesStmt                        *sql.Stmt
 	countAllNotificationsStmt                  *sql.Stmt
+	countAnnouncementsStmt                     *sql.Stmt
 	countDisabledGuildsStmt                    *sql.Stmt
 	countEnabledGuildsStmt                     *sql.Stmt
 	countMatchesStmt                           *sql.Stmt
@@ -651,6 +719,7 @@ type Queries struct {
 	deleteAllMatchModeratorsStmt               *sql.Stmt
 	deleteAllMatchStreamersStmt                *sql.Stmt
 	deleteAllMatchTeamsStmt                    *sql.Stmt
+	deleteAnnouncementStmt                     *sql.Stmt
 	deleteGuildConfigStmt                      *sql.Stmt
 	deleteGuildMatchesStmt                     *sql.Stmt
 	deleteMatchStmt                            *sql.Stmt
@@ -664,6 +733,7 @@ type Queries struct {
 	deleteNotificationStmt                     *sql.Stmt
 	deleteParticipationRequirementsStmt        *sql.Stmt
 	disableGuildStmt                           *sql.Stmt
+	getAnnouncementStmt                        *sql.Stmt
 	getGuildConfigStmt                         *sql.Stmt
 	getGuildConfigByCategoryStmt               *sql.Stmt
 	getGuildRoleAccessStmt                     *sql.Stmt
@@ -677,8 +747,8 @@ type Queries struct {
 	hasUserAccessStmt                          *sql.Stmt
 	increaseMatchTeamConfirmedParticipantsStmt *sql.Stmt
 	isGuildEnabledStmt                         *sql.Stmt
-	listDueNotificationsStmt                   *sql.Stmt
 	listGuildMatchesStmt                       *sql.Stmt
+	listGuildMatchesScheduledUntilStmt         *sql.Stmt
 	listGuildRoleAccessStmt                    *sql.Stmt
 	listGuildUserAccessStmt                    *sql.Stmt
 	listMatchModeratorsStmt                    *sql.Stmt
@@ -687,6 +757,8 @@ type Queries struct {
 	listNotificationsStmt                      *sql.Stmt
 	listNowAccessibleChannelsStmt              *sql.Stmt
 	listNowDeletableChannelsStmt               *sql.Stmt
+	listNowDueAnnouncementsStmt                *sql.Stmt
+	listNowDueNotificationsStmt                *sql.Stmt
 	listNowDueParticipationRequirementsStmt    *sql.Stmt
 	nextMatchCounterStmt                       *sql.Stmt
 	removeGuildRoleAccessStmt                  *sql.Stmt
@@ -704,6 +776,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                                         tx,
 		tx:                                         tx,
+		addAnnouncementStmt:                        q.addAnnouncementStmt,
 		addGuildConfigStmt:                         q.addGuildConfigStmt,
 		addGuildRoleReadAccessStmt:                 q.addGuildRoleReadAccessStmt,
 		addGuildRoleWriteAccessStmt:                q.addGuildRoleWriteAccessStmt,
@@ -717,8 +790,11 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addNotificationStmt:                        q.addNotificationStmt,
 		addParticipationRequirementsStmt:           q.addParticipationRequirementsStmt,
 		closeParticipationEntryStmt:                q.closeParticipationEntryStmt,
+		continueAnnouncementStmt:                   q.continueAnnouncementStmt,
+		continueAnnouncementsStmt:                  q.continueAnnouncementsStmt,
 		countAllMatchesStmt:                        q.countAllMatchesStmt,
 		countAllNotificationsStmt:                  q.countAllNotificationsStmt,
+		countAnnouncementsStmt:                     q.countAnnouncementsStmt,
 		countDisabledGuildsStmt:                    q.countDisabledGuildsStmt,
 		countEnabledGuildsStmt:                     q.countEnabledGuildsStmt,
 		countMatchesStmt:                           q.countMatchesStmt,
@@ -727,6 +803,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteAllMatchModeratorsStmt:               q.deleteAllMatchModeratorsStmt,
 		deleteAllMatchStreamersStmt:                q.deleteAllMatchStreamersStmt,
 		deleteAllMatchTeamsStmt:                    q.deleteAllMatchTeamsStmt,
+		deleteAnnouncementStmt:                     q.deleteAnnouncementStmt,
 		deleteGuildConfigStmt:                      q.deleteGuildConfigStmt,
 		deleteGuildMatchesStmt:                     q.deleteGuildMatchesStmt,
 		deleteMatchStmt:                            q.deleteMatchStmt,
@@ -740,6 +817,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteNotificationStmt:                     q.deleteNotificationStmt,
 		deleteParticipationRequirementsStmt:        q.deleteParticipationRequirementsStmt,
 		disableGuildStmt:                           q.disableGuildStmt,
+		getAnnouncementStmt:                        q.getAnnouncementStmt,
 		getGuildConfigStmt:                         q.getGuildConfigStmt,
 		getGuildConfigByCategoryStmt:               q.getGuildConfigByCategoryStmt,
 		getGuildRoleAccessStmt:                     q.getGuildRoleAccessStmt,
@@ -753,8 +831,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		hasUserAccessStmt:                          q.hasUserAccessStmt,
 		increaseMatchTeamConfirmedParticipantsStmt: q.increaseMatchTeamConfirmedParticipantsStmt,
 		isGuildEnabledStmt:                         q.isGuildEnabledStmt,
-		listDueNotificationsStmt:                   q.listDueNotificationsStmt,
 		listGuildMatchesStmt:                       q.listGuildMatchesStmt,
+		listGuildMatchesScheduledUntilStmt:         q.listGuildMatchesScheduledUntilStmt,
 		listGuildRoleAccessStmt:                    q.listGuildRoleAccessStmt,
 		listGuildUserAccessStmt:                    q.listGuildUserAccessStmt,
 		listMatchModeratorsStmt:                    q.listMatchModeratorsStmt,
@@ -763,6 +841,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		listNotificationsStmt:                      q.listNotificationsStmt,
 		listNowAccessibleChannelsStmt:              q.listNowAccessibleChannelsStmt,
 		listNowDeletableChannelsStmt:               q.listNowDeletableChannelsStmt,
+		listNowDueAnnouncementsStmt:                q.listNowDueAnnouncementsStmt,
+		listNowDueNotificationsStmt:                q.listNowDueNotificationsStmt,
 		listNowDueParticipationRequirementsStmt:    q.listNowDueParticipationRequirementsStmt,
 		nextMatchCounterStmt:                       q.nextMatchCounterStmt,
 		removeGuildRoleAccessStmt:                  q.removeGuildRoleAccessStmt,
