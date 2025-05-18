@@ -272,36 +272,35 @@ func (b *Bot) overrideCommands() error {
 				discord.PermissionAdministrator,
 			),
 			Options: []discord.CommandOption{
+				&discord.BooleanOption{
+					OptionName:  "enabled",
+					Description: "Enable or disable the bot for this server",
+				},
 				&discord.StringOption{
 					OptionName:  "channel_access_offset",
 					Description: "How long before the match the user can access the mach channel",
 					MinLength:   option.NewInt(2),
 					MaxLength:   option.NewInt(11),
-					Required:    true,
 				},
 				&discord.BooleanOption{
 					OptionName:  "event_creation_enabled",
-					Description: "Automatically reate scheduled events for matches that have a streamer and stream_url",
-					Required:    true,
+					Description: "Automatically create scheduled events for matches that have a streamer and stream_url",
 				},
 				&discord.StringOption{
 					OptionName:  "notification_offsets",
 					Description: "Intervals at which to remind before a match e.g. 24h,1h,15m,5m,30s or empty for no defaults",
-					Required:    true,
 				},
 				&discord.StringOption{
 					OptionName:  "requirements_offset",
-					Description: "Time before the match until which the participation requirements need to be met",
+					Description: "Time before the match until which the participation requirements need to be met e.g. 24h, 30m, 0s",
 					MinLength:   option.NewInt(2),
 					MaxLength:   option.NewInt(11),
-					Required:    true,
 				},
 				&discord.StringOption{
 					OptionName:  "channel_delete_offset",
-					Description: "Deadline after the match at which the channel is deleted",
+					Description: "Deadline after the match at which the channel is deleted e.g. 1h, 0s, 50m, 1h50m,30s",
 					MinLength:   option.NewInt(2),
 					MaxLength:   option.NewInt(11),
-					Required:    true,
 				},
 			},
 		},

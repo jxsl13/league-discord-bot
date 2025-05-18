@@ -11,3 +11,17 @@ func ReminderIntervals(name string, options discord.CommandInteractionOptions) (
 	s := options.Find(name).String()
 	return parse.ReminderIntervals(s)
 }
+
+func ReminderIntervalsOption(name string, options discord.CommandInteractionOptions) ([]time.Duration, bool, error) {
+	s := options.Find(name).String()
+	if s == "" {
+		return nil, false, nil
+	}
+
+	durations, err := parse.ReminderIntervals(s)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return durations, true, nil
+}

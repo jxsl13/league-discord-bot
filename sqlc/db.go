@@ -243,6 +243,24 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.resetEventIDStmt, err = db.PrepareContext(ctx, resetEventID); err != nil {
 		return nil, fmt.Errorf("error preparing query ResetEventID: %w", err)
 	}
+	if q.setGuildChannelAccessOffsetStmt, err = db.PrepareContext(ctx, setGuildChannelAccessOffset); err != nil {
+		return nil, fmt.Errorf("error preparing query SetGuildChannelAccessOffset: %w", err)
+	}
+	if q.setGuildChannelDeleteOffsetStmt, err = db.PrepareContext(ctx, setGuildChannelDeleteOffset); err != nil {
+		return nil, fmt.Errorf("error preparing query SetGuildChannelDeleteOffset: %w", err)
+	}
+	if q.setGuildEnabledStmt, err = db.PrepareContext(ctx, setGuildEnabled); err != nil {
+		return nil, fmt.Errorf("error preparing query SetGuildEnabled: %w", err)
+	}
+	if q.setGuildEventCreationEnabledStmt, err = db.PrepareContext(ctx, setGuildEventCreationEnabled); err != nil {
+		return nil, fmt.Errorf("error preparing query SetGuildEventCreationEnabled: %w", err)
+	}
+	if q.setGuildNotificationOffsetsStmt, err = db.PrepareContext(ctx, setGuildNotificationOffsets); err != nil {
+		return nil, fmt.Errorf("error preparing query SetGuildNotificationOffsets: %w", err)
+	}
+	if q.setGuildRequirementsOffsetStmt, err = db.PrepareContext(ctx, setGuildRequirementsOffset); err != nil {
+		return nil, fmt.Errorf("error preparing query SetGuildRequirementsOffset: %w", err)
+	}
 	if q.updateCategoryIdStmt, err = db.PrepareContext(ctx, updateCategoryId); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateCategoryId: %w", err)
 	}
@@ -628,6 +646,36 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing resetEventIDStmt: %w", cerr)
 		}
 	}
+	if q.setGuildChannelAccessOffsetStmt != nil {
+		if cerr := q.setGuildChannelAccessOffsetStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setGuildChannelAccessOffsetStmt: %w", cerr)
+		}
+	}
+	if q.setGuildChannelDeleteOffsetStmt != nil {
+		if cerr := q.setGuildChannelDeleteOffsetStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setGuildChannelDeleteOffsetStmt: %w", cerr)
+		}
+	}
+	if q.setGuildEnabledStmt != nil {
+		if cerr := q.setGuildEnabledStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setGuildEnabledStmt: %w", cerr)
+		}
+	}
+	if q.setGuildEventCreationEnabledStmt != nil {
+		if cerr := q.setGuildEventCreationEnabledStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setGuildEventCreationEnabledStmt: %w", cerr)
+		}
+	}
+	if q.setGuildNotificationOffsetsStmt != nil {
+		if cerr := q.setGuildNotificationOffsetsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setGuildNotificationOffsetsStmt: %w", cerr)
+		}
+	}
+	if q.setGuildRequirementsOffsetStmt != nil {
+		if cerr := q.setGuildRequirementsOffsetStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setGuildRequirementsOffsetStmt: %w", cerr)
+		}
+	}
 	if q.updateCategoryIdStmt != nil {
 		if cerr := q.updateCategoryIdStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateCategoryIdStmt: %w", cerr)
@@ -765,6 +813,12 @@ type Queries struct {
 	removeGuildUserAccessStmt                  *sql.Stmt
 	rescheduleMatchStmt                        *sql.Stmt
 	resetEventIDStmt                           *sql.Stmt
+	setGuildChannelAccessOffsetStmt            *sql.Stmt
+	setGuildChannelDeleteOffsetStmt            *sql.Stmt
+	setGuildEnabledStmt                        *sql.Stmt
+	setGuildEventCreationEnabledStmt           *sql.Stmt
+	setGuildNotificationOffsetsStmt            *sql.Stmt
+	setGuildRequirementsOffsetStmt             *sql.Stmt
 	updateCategoryIdStmt                       *sql.Stmt
 	updateGuildConfigStmt                      *sql.Stmt
 	updateMatchChannelAccessibilityStmt        *sql.Stmt
@@ -849,6 +903,12 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		removeGuildUserAccessStmt:                  q.removeGuildUserAccessStmt,
 		rescheduleMatchStmt:                        q.rescheduleMatchStmt,
 		resetEventIDStmt:                           q.resetEventIDStmt,
+		setGuildChannelAccessOffsetStmt:            q.setGuildChannelAccessOffsetStmt,
+		setGuildChannelDeleteOffsetStmt:            q.setGuildChannelDeleteOffsetStmt,
+		setGuildEnabledStmt:                        q.setGuildEnabledStmt,
+		setGuildEventCreationEnabledStmt:           q.setGuildEventCreationEnabledStmt,
+		setGuildNotificationOffsetsStmt:            q.setGuildNotificationOffsetsStmt,
+		setGuildRequirementsOffsetStmt:             q.setGuildRequirementsOffsetStmt,
 		updateCategoryIdStmt:                       q.updateCategoryIdStmt,
 		updateGuildConfigStmt:                      q.updateGuildConfigStmt,
 		updateMatchChannelAccessibilityStmt:        q.updateMatchChannelAccessibilityStmt,

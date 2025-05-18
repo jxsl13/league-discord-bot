@@ -47,6 +47,9 @@ func (b *Bot) commandGuildConfiguration(ctx context.Context, data cmdroute.Comma
 		)
 
 		sb.WriteString("Guild configuration:\n")
+		sb.WriteString("enabled: ")
+		sb.WriteString(format.MarkdownInlineCodeBlock(strconv.FormatBool(int64ToBool(cfg.Enabled))))
+		sb.WriteString(" whether the bot is enabled in this server or not\n\n")
 		sb.WriteString("channel_access_offset: ")
 		sb.WriteString(format.MarkdownInlineCodeBlock(accessOffset.String()))
 		sb.WriteString(" point in time before the match at which participants gain access to the channel\n\n")
@@ -89,45 +92,95 @@ func (b *Bot) commandGuildConfigure(ctx context.Context, data cmdroute.CommandDa
 			return err
 		}
 
-		accessOffset, err := options.Duration("channel_access_offset", time.Minute, 720*time.Hour, data.Options)
+		cfg, err := q.GetGuildConfig(ctx, data.Event.GuildID.String())
 		if err != nil {
 			return err
 		}
 
-		deleteOffset, err := options.Duration("channel_delete_offset", time.Minute, 8760*time.Hour, data.Options)
+		atLeastOneOption := false
+
+		enabled, enabledOk, err := options.BoolInt64Option("enabled", data.Options)
 		if err != nil {
 			return err
 		}
+		atLeastOneOption = enabledOk || atLeastOneOption
 
-		requirementsOffset, err := options.Duration("requirements_offset", time.Minute, 720*time.Hour, data.Options)
+		if enabledOk {
+			cfg.Enabled = enabled
+		}
+
+		accessOffset, accessOffsetOk, err := options.DurationOption("channel_access_offset", 0, 720*time.Hour, data.Options)
 		if err != nil {
 			return err
 		}
+		atLeastOneOption = accessOffsetOk || atLeastOneOption
 
-		intervals, err := options.ReminderIntervals("notification_offsets", data.Options)
+		if accessOffsetOk {
+			cfg.ChannelAccessOffset = int64(accessOffset / time.Second)
+		}
+
+		deleteOffset, deleteOffsetOk, err := options.DurationOption("channel_delete_offset", 0, 8760*time.Hour, data.Options)
 		if err != nil {
 			return err
 		}
+		atLeastOneOption = deleteOffsetOk || atLeastOneOption
 
-		eventCreationEnabled, err := options.BoolInt64("event_creation_enabled", data.Options)
+		if deleteOffsetOk {
+			cfg.ChannelDeleteOffset = int64(deleteOffset / time.Second)
+		}
+
+		requirementsOffset, requirementsOffsetOk, err := options.DurationOption("requirements_offset", 0, 720*time.Hour, data.Options)
 		if err != nil {
 			return err
+		}
+		atLeastOneOption = requirementsOffsetOk || atLeastOneOption
+
+		if requirementsOffsetOk {
+			cfg.RequirementsOffset = int64(requirementsOffset / time.Second)
+		}
+
+		intervals, intervalsOk, err := options.ReminderIntervalsOption("notification_offsets", data.Options)
+		if err != nil {
+			return err
+		}
+		atLeastOneOption = intervalsOk || atLeastOneOption
+
+		if intervalsOk {
+			cfg.NotificationOffsets = format.ReminderIntervals(intervals)
+		}
+
+		eventCreationEnabled, eventCreationOK, err := options.BoolInt64Option("event_creation_enabled", data.Options)
+		if err != nil {
+			return err
+		}
+		atLeastOneOption = eventCreationOK || atLeastOneOption
+
+		if eventCreationOK {
+			cfg.EventCreationEnabled = eventCreationEnabled
+		}
+
+		if !atLeastOneOption {
+			return errors.New("no options were provided, please provide at least one option to update")
 		}
 
 		// reuse validation logic from config
-		err = config.ValidatableGuildConfig(accessOffset, requirementsOffset, deleteOffset)
+		err = config.ValidatableGuildConfig(
+			time.Duration(cfg.ChannelAccessOffset)*time.Second,
+			time.Duration(cfg.RequirementsOffset)*time.Second,
+			time.Duration(cfg.ChannelDeleteOffset)*time.Second,
+		)
 		if err != nil {
 			return err
 		}
 
 		err = q.UpdateGuildConfig(ctx, sqlc.UpdateGuildConfigParams{
-			Enabled:              1,
 			GuildID:              data.Event.GuildID.String(),
-			ChannelDeleteOffset:  int64(deleteOffset / time.Second),
-			ChannelAccessOffset:  int64(accessOffset / time.Second),
-			RequirementsOffset:   int64(requirementsOffset / time.Second),
-			NotificationOffsets:  format.ReminderIntervals(intervals),
-			EventCreationEnabled: eventCreationEnabled,
+			Enabled:              cfg.Enabled,
+			EventCreationEnabled: cfg.EventCreationEnabled,
+			ChannelAccessOffset:  cfg.ChannelAccessOffset,
+			NotificationOffsets:  cfg.NotificationOffsets,
+			RequirementsOffset:   cfg.RequirementsOffset,
+			ChannelDeleteOffset:  cfg.ChannelDeleteOffset,
 		})
 		if err != nil {
 			err = fmt.Errorf("error adding guild config: %w", err)

@@ -96,4 +96,33 @@ FROM guild_config
 WHERE enabled = 0;
 
 
+-- name: SetGuildChannelAccessOffset :exec
+UPDATE guild_config
+SET channel_access_offset = :channel_access_offset
+WHERE guild_id = :guild_id;
+
+-- name: SetGuildEventCreationEnabled :exec
+UPDATE guild_config
+SET event_creation_enabled = :event_creation_enabled
+WHERE guild_id = :guild_id;
+
+-- name: SetGuildChannelDeleteOffset :exec
+UPDATE guild_config
+SET channel_delete_offset = :channel_delete_offset
+WHERE guild_id = :guild_id;
+
+-- name: SetGuildRequirementsOffset :exec
+UPDATE guild_config
+SET requirements_offset = :requirements_offset
+WHERE guild_id = :guild_id;
+
+-- name: SetGuildNotificationOffsets :exec
+UPDATE guild_config
+SET notification_offsets = :notification_offsets
+WHERE guild_id = :guild_id;
+
+-- name: SetGuildEnabled :exec
+UPDATE guild_config
+SET enabled = :enabled
+WHERE guild_id = :guild_id;
 

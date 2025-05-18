@@ -214,6 +214,102 @@ func (q *Queries) NextMatchCounter(ctx context.Context, guildID string) (int64, 
 	return match_counter, err
 }
 
+const setGuildChannelAccessOffset = `-- name: SetGuildChannelAccessOffset :exec
+UPDATE guild_config
+SET channel_access_offset = ?1
+WHERE guild_id = ?2
+`
+
+type SetGuildChannelAccessOffsetParams struct {
+	ChannelAccessOffset int64  `db:"channel_access_offset"`
+	GuildID             string `db:"guild_id"`
+}
+
+func (q *Queries) SetGuildChannelAccessOffset(ctx context.Context, arg SetGuildChannelAccessOffsetParams) error {
+	_, err := q.exec(ctx, q.setGuildChannelAccessOffsetStmt, setGuildChannelAccessOffset, arg.ChannelAccessOffset, arg.GuildID)
+	return err
+}
+
+const setGuildChannelDeleteOffset = `-- name: SetGuildChannelDeleteOffset :exec
+UPDATE guild_config
+SET channel_delete_offset = ?1
+WHERE guild_id = ?2
+`
+
+type SetGuildChannelDeleteOffsetParams struct {
+	ChannelDeleteOffset int64  `db:"channel_delete_offset"`
+	GuildID             string `db:"guild_id"`
+}
+
+func (q *Queries) SetGuildChannelDeleteOffset(ctx context.Context, arg SetGuildChannelDeleteOffsetParams) error {
+	_, err := q.exec(ctx, q.setGuildChannelDeleteOffsetStmt, setGuildChannelDeleteOffset, arg.ChannelDeleteOffset, arg.GuildID)
+	return err
+}
+
+const setGuildEnabled = `-- name: SetGuildEnabled :exec
+UPDATE guild_config
+SET enabled = ?1
+WHERE guild_id = ?2
+`
+
+type SetGuildEnabledParams struct {
+	Enabled int64  `db:"enabled"`
+	GuildID string `db:"guild_id"`
+}
+
+func (q *Queries) SetGuildEnabled(ctx context.Context, arg SetGuildEnabledParams) error {
+	_, err := q.exec(ctx, q.setGuildEnabledStmt, setGuildEnabled, arg.Enabled, arg.GuildID)
+	return err
+}
+
+const setGuildEventCreationEnabled = `-- name: SetGuildEventCreationEnabled :exec
+UPDATE guild_config
+SET event_creation_enabled = ?1
+WHERE guild_id = ?2
+`
+
+type SetGuildEventCreationEnabledParams struct {
+	EventCreationEnabled int64  `db:"event_creation_enabled"`
+	GuildID              string `db:"guild_id"`
+}
+
+func (q *Queries) SetGuildEventCreationEnabled(ctx context.Context, arg SetGuildEventCreationEnabledParams) error {
+	_, err := q.exec(ctx, q.setGuildEventCreationEnabledStmt, setGuildEventCreationEnabled, arg.EventCreationEnabled, arg.GuildID)
+	return err
+}
+
+const setGuildNotificationOffsets = `-- name: SetGuildNotificationOffsets :exec
+UPDATE guild_config
+SET notification_offsets = ?1
+WHERE guild_id = ?2
+`
+
+type SetGuildNotificationOffsetsParams struct {
+	NotificationOffsets string `db:"notification_offsets"`
+	GuildID             string `db:"guild_id"`
+}
+
+func (q *Queries) SetGuildNotificationOffsets(ctx context.Context, arg SetGuildNotificationOffsetsParams) error {
+	_, err := q.exec(ctx, q.setGuildNotificationOffsetsStmt, setGuildNotificationOffsets, arg.NotificationOffsets, arg.GuildID)
+	return err
+}
+
+const setGuildRequirementsOffset = `-- name: SetGuildRequirementsOffset :exec
+UPDATE guild_config
+SET requirements_offset = ?1
+WHERE guild_id = ?2
+`
+
+type SetGuildRequirementsOffsetParams struct {
+	RequirementsOffset int64  `db:"requirements_offset"`
+	GuildID            string `db:"guild_id"`
+}
+
+func (q *Queries) SetGuildRequirementsOffset(ctx context.Context, arg SetGuildRequirementsOffsetParams) error {
+	_, err := q.exec(ctx, q.setGuildRequirementsOffsetStmt, setGuildRequirementsOffset, arg.RequirementsOffset, arg.GuildID)
+	return err
+}
+
 const updateCategoryId = `-- name: UpdateCategoryId :exec
 UPDATE guild_config
 SET

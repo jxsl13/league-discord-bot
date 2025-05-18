@@ -18,8 +18,8 @@ func ValidatableGuildConfig(access, requirements, delete time.Duration) error {
 		return fmt.Errorf("channel delete offset must be greater or equal to 0s, e.g. 24h or 1h30m")
 	}
 
-	if requirements >= access {
-		return fmt.Errorf("participation requirements offset must be smaller than channel access offset, e.g. 24h, 1h30m: it does not make sense to have confirmed participation before the users can access the match channel: requirements offset: %s, access offset: %s", requirements, access)
+	if requirements > access {
+		return fmt.Errorf("participation requirements offset must be smaller than or equal to channel access offset, e.g. 24h, 1h30m: it does not make sense to have confirmed participation before the users can access the match channel: requirements offset: %s, access offset: %s", requirements, access)
 	}
 
 	return nil
