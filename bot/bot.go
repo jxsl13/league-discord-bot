@@ -492,8 +492,8 @@ func (b *Bot) overrideCommands() error {
 				&discord.StringOption{
 					OptionName:  "interval",
 					Description: "Interval at and for which the announcement should be sent. e.g. 24h (1 day), 168h (1 week)",
-					MinLength:   option.NewInt(2), // 1h is min
-					MaxLength:   option.NewInt(1), // 8760h00m00s is max
+					MinLength:   option.NewInt(2),  // 1h is min
+					MaxLength:   option.NewInt(11), // 8760h00m00s is max
 					Required:    true,
 				},
 				&discord.StringOption{
