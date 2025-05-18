@@ -84,6 +84,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.countDisabledGuildsStmt, err = db.PrepareContext(ctx, countDisabledGuilds); err != nil {
 		return nil, fmt.Errorf("error preparing query CountDisabledGuilds: %w", err)
 	}
+	if q.countEnabledEventCreationStmt, err = db.PrepareContext(ctx, countEnabledEventCreation); err != nil {
+		return nil, fmt.Errorf("error preparing query CountEnabledEventCreation: %w", err)
+	}
 	if q.countEnabledGuildsStmt, err = db.PrepareContext(ctx, countEnabledGuilds); err != nil {
 		return nil, fmt.Errorf("error preparing query CountEnabledGuilds: %w", err)
 	}
@@ -379,6 +382,11 @@ func (q *Queries) Close() error {
 	if q.countDisabledGuildsStmt != nil {
 		if cerr := q.countDisabledGuildsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing countDisabledGuildsStmt: %w", cerr)
+		}
+	}
+	if q.countEnabledEventCreationStmt != nil {
+		if cerr := q.countEnabledEventCreationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing countEnabledEventCreationStmt: %w", cerr)
 		}
 	}
 	if q.countEnabledGuildsStmt != nil {
@@ -760,6 +768,7 @@ type Queries struct {
 	countAllNotificationsStmt                  *sql.Stmt
 	countAnnouncementsStmt                     *sql.Stmt
 	countDisabledGuildsStmt                    *sql.Stmt
+	countEnabledEventCreationStmt              *sql.Stmt
 	countEnabledGuildsStmt                     *sql.Stmt
 	countMatchesStmt                           *sql.Stmt
 	countNotificationsStmt                     *sql.Stmt
@@ -850,6 +859,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		countAllNotificationsStmt:                  q.countAllNotificationsStmt,
 		countAnnouncementsStmt:                     q.countAnnouncementsStmt,
 		countDisabledGuildsStmt:                    q.countDisabledGuildsStmt,
+		countEnabledEventCreationStmt:              q.countEnabledEventCreationStmt,
 		countEnabledGuildsStmt:                     q.countEnabledGuildsStmt,
 		countMatchesStmt:                           q.countMatchesStmt,
 		countNotificationsStmt:                     q.countNotificationsStmt,

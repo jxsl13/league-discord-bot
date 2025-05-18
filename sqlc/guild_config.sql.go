@@ -69,6 +69,19 @@ func (q *Queries) CountDisabledGuilds(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countEnabledEventCreation = `-- name: CountEnabledEventCreation :one
+SELECT COUNT(guild_id)
+FROM guild_config
+WHERE event_creation_enabled = 1
+`
+
+func (q *Queries) CountEnabledEventCreation(ctx context.Context) (int64, error) {
+	row := q.queryRow(ctx, q.countEnabledEventCreationStmt, countEnabledEventCreation)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countEnabledGuilds = `-- name: CountEnabledGuilds :one
 SELECT COUNT(guild_id)
 FROM guild_config

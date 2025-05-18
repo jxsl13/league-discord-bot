@@ -95,6 +95,11 @@ SELECT COUNT(guild_id)
 FROM guild_config
 WHERE enabled = 0;
 
+-- name: CountEnabledEventCreation :one
+SELECT COUNT(guild_id)
+FROM guild_config
+WHERE event_creation_enabled = 1;
+
 
 -- name: SetGuildChannelAccessOffset :exec
 UPDATE guild_config
