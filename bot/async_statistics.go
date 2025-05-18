@@ -32,6 +32,7 @@ func (b *Bot) asyncStatistics() {
 			log.Println("stopping daily statistics routine")
 			return
 		case t := <-timer.C:
+			drained = true
 
 			_ = b.printDailyStatistics()
 			timerutils.ResetTimer(timer, untilMidnight(t), &drained)
