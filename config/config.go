@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -14,21 +15,23 @@ import (
 func New() *Config {
 	return &Config{
 		DSN:                 filepath.Join(filepath.Dir(os.Args[0]), "league.db"),
+		BackupInterval:      24 * time.Hour,
 		ChannelAccessOffset: 7 * 24 * time.Hour,
 		RequirementsOffset:  24 * time.Hour,
 		ChannelDeleteOffset: 1 * time.Hour,
 		AsyncLoopInterval:   15 * time.Second,
-		BackoffMinDuration:  5 * time.Second,
 		ReminderIntervals:   []time.Duration{24 * time.Hour, 1 * time.Hour, 15 * time.Minute, 5 * time.Minute, 30 * time.Second},
 	}
 }
 
 type Config struct {
-	DSN          string `koanf:"dsn" description:"database file path (DSN)"`
-	DiscordToken string `koanf:"discord.token" description:"discord bot token"`
+	DSN            string        `koanf:"dsn" description:"database file path (DSN)"`
+	DiscordToken   string        `koanf:"discord.token" description:"discord bot token"`
+	BackupInterval time.Duration `koanf:"backup.interval" description:"interval for creating backups, e.g. 0s (disabled), 1m, 1h, 12h, 24h, 168h, 720h"`
+	BackupDir      string
+	BackupFile     string
 
-	AsyncLoopInterval  time.Duration `koanf:"async.loop.interval" description:"interval for async loops, should be a small value e.g. 10s, 30s, 1m"`
-	BackoffMinDuration time.Duration `koanf:"backoff.min.duration" description:"minimum duration for backoff upon api error, must be smaller than async loop interval e.g. 10s, 30s, 1m"`
+	AsyncLoopInterval time.Duration `koanf:"async.loop.interval" description:"interval for async loops, should be a small value e.g. 10s, 30s, 1m"`
 
 	ReminderIntervalsString string `koanf:"reminder.intervals" description:"default guild configuration list of reminder intervals to remind players before a match, e.g. 24h,1h,15m,5m,30s"`
 	ReminderIntervals       []time.Duration
@@ -56,18 +59,6 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("async loop interval must be smaller than or equal to 5m, e.g. 10s, 30s, 1m")
 	}
 
-	if c.BackoffMinDuration < 1*time.Second {
-		return fmt.Errorf("backoff min duration must be greater or equal to 1s, e.g. 5s, 10s, 30s, 1m")
-	}
-
-	if c.BackoffMinDuration > 5*time.Minute {
-		return fmt.Errorf("backoff min duration must be smaller than or equal to 5m, e.g. 5s, 10s, 30s, 1m")
-	}
-
-	if c.BackoffMinDuration > c.AsyncLoopInterval {
-		return fmt.Errorf("backoff min duration must be smaller than or equal to async loop interval, e.g. 10s, 30s, 1m")
-	}
-
 	err := ValidatableGuildConfig(c.ChannelAccessOffset, c.RequirementsOffset, c.ChannelDeleteOffset)
 	if err != nil {
 		return err
@@ -89,6 +80,9 @@ func (c *Config) Validate() error {
 	if err != nil {
 		return fmt.Errorf("error parsing DSN: %w", err)
 	}
+
+	c.BackupDir = path.Join(path.Dir(u.Path), "backups")
+	c.BackupFile = path.Base(u.Path)
 
 	v := u.Query()
 	if !v.Has("_txlock") {

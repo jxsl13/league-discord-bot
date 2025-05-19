@@ -8,3 +8,4 @@ __debug_bin*
 *.db-wal
 league-discord-bot
 .DS_Store
+backups/*

@@ -76,6 +76,13 @@ func (c *rootContext) PreRunE(cmd *cobra.Command) func(cmd *cobra.Command, args 
 			return err
 		}
 
+		if c.Config.BackupInterval > 0 {
+			err = os.MkdirAll(c.Config.BackupDir, 0750)
+			if err != nil {
+				return fmt.Errorf("failed to create backups directory: %w", err)
+			}
+		}
+
 		pragmas := strings.Join(
 			[]string{
 				"PRAGMA journal_mode=WAL;",
@@ -125,11 +132,13 @@ func (c *rootContext) RunE(cmd *cobra.Command, args []string) error {
 		c.Config.DiscordToken,
 		c.DB,
 		c.Config.ReminderIntervals,
-		c.Config.BackoffMinDuration,
 		c.Config.AsyncLoopInterval,
 		c.Config.ChannelAccessOffset,
 		c.Config.RequirementsOffset,
 		c.Config.ChannelDeleteOffset,
+		c.Config.BackupDir,
+		c.Config.BackupFile,
+		c.Config.BackupInterval,
 	)
 	if err != nil {
 		return err

@@ -34,8 +34,63 @@ type Bot struct {
 	defaultChannelDeleteOffset time.Duration
 
 	loopInterval time.Duration
-	minBackoff   time.Duration
 	scheduler    gocron.Scheduler
+
+	backupDir      string
+	backupFile     string
+	backupInterval time.Duration
+}
+
+type JobDefinition struct {
+	Scale time.Duration
+	Def   gocron.JobDefinition
+}
+
+var (
+	scales = []JobDefinition{
+		{
+			Scale: 720 * time.Hour,
+			Def:   gocron.MonthlyJob(1, gocron.NewDaysOfTheMonth(1), gocron.NewAtTimes(gocron.NewAtTime(2, 0, 0))),
+		},
+		{
+			Scale: 168 * time.Hour,
+			Def:   gocron.WeeklyJob(1, gocron.NewWeekdays(time.Monday), gocron.NewAtTimes(gocron.NewAtTime(2, 0, 0))),
+		},
+		{
+			Scale: 24 * time.Hour,
+			Def:   gocron.DailyJob(1, gocron.NewAtTimes(gocron.NewAtTime(2, 0, 0))),
+		},
+		{
+			Scale: 12 * time.Hour,
+			Def: gocron.DailyJob(1, gocron.NewAtTimes(
+				gocron.NewAtTime(2, 0, 0),
+				gocron.NewAtTime(14, 0, 0),
+			)),
+		},
+		{
+			Scale: 6 * time.Hour,
+			Def: gocron.DailyJob(1, gocron.NewAtTimes(
+				gocron.NewAtTime(2, 0, 0),
+				gocron.NewAtTime(8, 0, 0),
+				gocron.NewAtTime(14, 0, 0),
+				gocron.NewAtTime(20, 0, 0),
+			)),
+		},
+	}
+)
+
+func SelectJobDefinition(interval time.Duration, factor ...int) gocron.JobDefinition {
+	n := time.Duration(1)
+	if len(factor) > 0 && factor[0] > 1 {
+		n = time.Duration(factor[0])
+	}
+
+	for _, s := range scales {
+		if interval%(s.Scale*n) == 0 {
+			return s.Def
+		}
+	}
+	return gocron.DurationJob(interval * n)
 }
 
 // New requires a discord bot token and returns a Bot instance.
@@ -45,14 +100,16 @@ func New(
 	token string,
 	db *sql.DB,
 	defaultNotificationOffsets []time.Duration,
-	minBackoff time.Duration,
 	loopInterval time.Duration,
 	defaultChannelAccessOffset time.Duration,
 	defaulRequirementsOffset time.Duration,
 	defaultChannelDeleteOffset time.Duration,
+	backupDir string,
+	backupFile string,
+	backupInterval time.Duration,
 ) (*Bot, error) {
 
-	scheduler, err := gocron.NewScheduler()
+	scheduler, err := gocron.NewScheduler(gocron.WithLimitConcurrentJobs(1, gocron.LimitModeWait))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scheduler: %w", err)
 	}
@@ -68,8 +125,10 @@ func New(
 		defaulRequirementsOffset:   defaulRequirementsOffset,
 		defaultChannelDeleteOffset: defaultChannelDeleteOffset,
 		loopInterval:               loopInterval,
-		minBackoff:                 minBackoff,
 		scheduler:                  scheduler,
+		backupDir:                  backupDir,
+		backupFile:                 backupFile,
+		backupInterval:             backupInterval,
 	}
 
 	s.AddIntents(
@@ -95,6 +154,23 @@ func New(
 				gocron.DailyJob(1, gocron.NewAtTimes(gocron.NewAtTime(0, 0, 0))),
 				gocron.NewTask(bot.printDailyStatistics),
 			)
+
+			if bot.backupInterval > 0 {
+				bot.scheduler.NewJob(
+					SelectJobDefinition(bot.backupInterval),
+					gocron.NewTask(bot.createBackup),
+				)
+				// cleanup every month
+				bot.scheduler.NewJob(
+					gocron.MonthlyJob(1,
+						gocron.NewDaysOfTheMonth(1),
+						gocron.NewAtTimes(
+							gocron.NewAtTime(2, 0, 0),
+						),
+					),
+					gocron.NewTask(bot.compressBackups),
+				)
+			}
 
 			loopDuration := gocron.DurationJob(loopInterval)
 			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncGrantChannelAccess))

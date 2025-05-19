@@ -8,6 +8,7 @@ require (
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
+	github.com/ulikunitz/xz v0.5.12
 )
 
 require (
