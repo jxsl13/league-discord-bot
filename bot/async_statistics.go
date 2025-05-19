@@ -3,42 +3,9 @@ package bot
 import (
 	"context"
 	"log"
-	"time"
 
-	"github.com/jxs13/league-discord-bot/internal/timerutils"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
-
-func untilMidnight(from ...time.Time) time.Duration {
-	now := time.Now()
-	if len(from) > 0 {
-		now = from[0]
-	}
-	_, offset := now.Zone()
-	midnight := now.Add(24 * time.Hour).Truncate(24 * time.Hour)
-	d := midnight.Sub(now) - time.Duration(offset)*time.Second
-	log.Printf("until next statistics: %s", d)
-
-	return max(d, time.Minute)
-}
-
-func (b *Bot) asyncStatistics() {
-	timer, drained := timerutils.NewTimer()
-	defer timerutils.CloseTimer(timer, &drained)
-
-	for {
-		select {
-		case <-b.ctx.Done():
-			log.Println("stopping daily statistics routine")
-			return
-		case t := <-timer.C:
-			drained = true
-
-			_ = b.printDailyStatistics()
-			timerutils.ResetTimer(timer, untilMidnight(t), &drained)
-		}
-	}
-}
 
 func (b *Bot) printDailyStatistics() (err error) {
 	defer func() {

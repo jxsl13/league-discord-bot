@@ -281,6 +281,7 @@ func (b *Bot) createGuildEvent(ctx context.Context, q *sqlc.Queries, param *Guil
 	const reason = "automatically created event because the participating teams were granted access to the match channel"
 	var (
 		now1       = time.Now().Add(time.Minute)
+		now2       = now1.Add(time.Minute)
 		startsAt   = time.Unix(param.ScheduledAt, 0)
 		endsAt     = time.Unix(param.DeleteAt, 0)
 		startsAtTs = discord.NewTimestamp(startsAt)
@@ -289,17 +290,20 @@ func (b *Bot) createGuildEvent(ctx context.Context, q *sqlc.Queries, param *Guil
 
 	if startsAt.Before(now1) {
 		// event is in the past, set it to now
+		startsAt = now1
 		startsAtTs = discord.NewTimestamp(now1)
 	}
 
 	if endsAt.Before(now1) {
 		// event is in the past, set it to now
-		endsAtTs = discord.NewTimestamp(now1)
+		endsAt = now2
+		endsAtTs = discord.NewTimestamp(now2)
 	}
 
 	if startsAt.After(endsAt) {
 		// event is in the past, set it to now
-		endsAtTs = discord.NewTimestamp(startsAt.Add(time.Minute))
+		endsAt = startsAt.Add(time.Minute)
+		endsAtTs = discord.NewTimestamp(endsAt)
 	}
 
 	event, err := b.state.CreateScheduledEvent(param.GuildID, reason, api.CreateScheduledEventData{

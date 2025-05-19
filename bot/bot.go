@@ -15,9 +15,9 @@ import (
 	"github.com/diamondburned/arikawa/v3/gateway"
 	"github.com/diamondburned/arikawa/v3/state"
 	"github.com/diamondburned/arikawa/v3/utils/json/option"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/jxs13/league-discord-bot/internal/format"
 	"github.com/jxs13/league-discord-bot/internal/parse"
-	"github.com/jxs13/league-discord-bot/internal/timerutils"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
@@ -35,6 +35,7 @@ type Bot struct {
 
 	loopInterval time.Duration
 	minBackoff   time.Duration
+	scheduler    gocron.Scheduler
 }
 
 // New requires a discord bot token and returns a Bot instance.
@@ -51,6 +52,11 @@ func New(
 	defaultChannelDeleteOffset time.Duration,
 ) (*Bot, error) {
 
+	scheduler, err := gocron.NewScheduler()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scheduler: %w", err)
+	}
+
 	s := state.New("Bot " + token)
 	bot := &Bot{
 		ctx:                        ctx,
@@ -63,6 +69,7 @@ func New(
 		defaultChannelDeleteOffset: defaultChannelDeleteOffset,
 		loopInterval:               loopInterval,
 		minBackoff:                 minBackoff,
+		scheduler:                  scheduler,
 	}
 
 	s.AddIntents(
@@ -81,73 +88,20 @@ func New(
 			}
 			bot.userID = me.ID
 
-			bot.wg.Add(1)
-			go timerutils.Loop(
-				bot.ctx,
-				minBackoff,
-				loopInterval,
-				bot.asyncGrantChannelAccess,
-				func() {
-					log.Println("channel access routine stopped")
-					bot.wg.Done()
-				},
+			// print statistics on startup
+			bot.printDailyStatistics()
+
+			bot.scheduler.NewJob(
+				gocron.DailyJob(1, gocron.NewAtTimes(gocron.NewAtTime(0, 0, 0))),
+				gocron.NewTask(bot.printDailyStatistics),
 			)
 
-			bot.wg.Add(1)
-			go timerutils.Loop(
-				bot.ctx,
-				minBackoff,
-				loopInterval,
-				bot.asyncNotifications,
-				func() {
-					log.Println("reminder routine stopped")
-					bot.wg.Done()
-				},
-			)
-
-			bot.wg.Add(1)
-			go timerutils.Loop(
-				bot.ctx,
-				minBackoff,
-				loopInterval,
-				bot.asyncDeleteExpiredChannels,
-				func() {
-					log.Println("channel delete routine stopped")
-					bot.wg.Done()
-				},
-			)
-
-			bot.wg.Add(1)
-			go timerutils.Loop(
-				bot.ctx,
-				minBackoff,
-				loopInterval,
-				bot.asyncCheckParticipationDeadline,
-				func() {
-					log.Println("participant deadline check routine stopped")
-					bot.wg.Done()
-				},
-			)
-
-			bot.wg.Add(1)
-			go timerutils.Loop(
-				bot.ctx,
-				minBackoff,
-				loopInterval,
-				bot.asyncAnnouncements,
-				func() {
-					log.Println("announcement routine stopped")
-					bot.wg.Done()
-				},
-			)
-
-			bot.wg.Add(1)
-			go func() {
-				defer bot.wg.Done()
-				bot.asyncStatistics()
-			}()
-
-			log.Println("bot is ready")
+			loopDuration := gocron.DurationJob(loopInterval)
+			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncGrantChannelAccess))
+			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncNotifications))
+			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncDeleteExpiredChannels))
+			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncCheckParticipationDeadline))
+			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncAnnouncements))
 		})
 	})
 
@@ -183,7 +137,7 @@ func New(
 
 	s.AddInteractionHandler(r)
 
-	err := bot.overrideCommands()
+	err = bot.overrideCommands()
 	if err != nil {
 		return nil, fmt.Errorf("failed to override commands: %w", err)
 	}
@@ -192,6 +146,7 @@ func New(
 }
 
 func (b *Bot) Connect(ctx context.Context) error {
+	b.scheduler.Start()
 	return b.state.Connect(ctx)
 }
 
@@ -200,6 +155,7 @@ func (b *Bot) Close() error {
 
 	return errors.Join(
 		b.state.Close(),
+		b.scheduler.Shutdown(),
 	)
 }
 
