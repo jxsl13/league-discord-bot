@@ -19,7 +19,7 @@ func untilMidnight(from ...time.Time) time.Duration {
 	d := midnight.Sub(now) - time.Duration(offset)*time.Second
 	log.Printf("until next statistics: %s", d)
 
-	return d
+	return max(d, time.Minute)
 }
 
 func (b *Bot) asyncStatistics() {
