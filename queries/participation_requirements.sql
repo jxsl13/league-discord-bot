@@ -51,3 +51,14 @@ WHERE participation_requirements.deadline_at <= unixepoch('now')
 AND participation_requirements.entry_closed = 0
 ORDER BY deadline_at ASC;
 
+-- name: NextParticipationRequirement :one
+SELECT
+    channel_id,
+    participants_per_team,
+    deadline_at,
+    entry_closed
+FROM participation_requirements
+WHERE participation_requirements.entry_closed = 0
+ORDER BY deadline_at ASC
+LIMIT 1;
+

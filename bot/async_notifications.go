@@ -17,14 +17,14 @@ import (
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
-func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err error) {
+func (b *Bot) asyncNotifications() (err error) {
 	started := time.Now()
 	defer func() {
 		if err != nil {
 			log.Printf("error in reminder routine (started at %s): %v", started, err)
 		}
 	}()
-	err = b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
+	err = b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
 		notifications, err := q.ListNowDueNotifications(ctx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -148,7 +148,13 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 		}
 
 		if len(orphanedMatches) > 0 {
+			// refreshes all jobs
 			err = b.deleteOphanedMatches(ctx, q, orphanedMatches...)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = b.refreshNotificationJob(ctx, q)
 			if err != nil {
 				return err
 			}
@@ -157,10 +163,10 @@ func (b *Bot) asyncNotifications(ctx context.Context) (d time.Duration, err erro
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	// important that we do not overwrite this with 0,
 	// because it might have been set in the transaction closure
-	return d, nil
+	return nil
 }

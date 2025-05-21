@@ -102,6 +102,24 @@ WHERE matches.channel_accessible = 0
 AND matches.channel_accessible_at <= unixepoch('now')
 ORDER BY channel_accessible_at ASC;
 
+-- name: NextAccessibleChannel :one
+SELECT
+    guild_id,
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    scheduled_at,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+WHERE matches.channel_accessible = 0
+ORDER BY channel_accessible_at ASC
+LIMIT 1;
+
 -- name: UpdateMatchChannelAccessibility :exec
 UPDATE matches
 SET
@@ -133,6 +151,23 @@ FROM matches
 WHERE matches.channel_delete_at <= unixepoch('now')
 ORDER BY channel_delete_at ASC;
 
+-- name: NextDeletableChannel :one
+SELECT
+    guild_id,
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    event_id,
+    scheduled_at,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+ORDER BY channel_delete_at ASC
+LIMIT 1;
 
 -- name: CountMatches :one
 SELECT COUNT(*) AS count
@@ -169,3 +204,4 @@ FROM matches
 WHERE guild_id = :guild_id
 AND scheduled_at <= :scheduled_at
 ORDER BY scheduled_at ASC;
+

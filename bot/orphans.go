@@ -27,13 +27,18 @@ func (b *Bot) deleteOphanedMatches(ctx context.Context, q *sqlc.Queries, channel
 		// delete single match
 		err = q.DeleteMatch(ctx, channelIDs[0])
 		if err != nil {
-			return
+			return err
 		}
-		return nil
+		return b.refreshJobSchedules(ctx, q)
 	}
 
 	slices.Sort(channelIDs)
 	channelIDs = slices.Compact(channelIDs)
 
-	return q.DeleteMatchList(ctx, channelIDs)
+	err = q.DeleteMatchList(ctx, channelIDs)
+	if err != nil {
+		return err
+	}
+
+	return b.refreshJobSchedules(ctx, q)
 }

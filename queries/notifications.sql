@@ -55,6 +55,19 @@ FROM notifications
 WHERE notify_at <= unixepoch('now')
 ORDER BY notify_at ASC;
 
+-- name: NextNotification :one
+SELECT
+    channel_id,
+    notify_at,
+    custom_text,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM notifications
+ORDER BY notify_at ASC
+LIMIT 1;
+
 -- name: DeleteMatchNotifications :exec
 DELETE FROM notifications
 WHERE channel_id = :channel_id;
@@ -62,3 +75,5 @@ WHERE channel_id = :channel_id;
 -- name: CountAllNotifications :one
 SELECT COUNT(*)
 FROM notifications;
+
+

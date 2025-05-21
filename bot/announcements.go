@@ -72,8 +72,8 @@ func (b *Bot) commandAnnouncementConfiguration(ctx context.Context, data cmdrout
 			sb.WriteString(format.MarkdownInlineCodeBlock(a.CustomTextAfter))
 			sb.WriteString("\n")
 		}
-
 		content = sb.String()
+
 		return nil
 	})
 	if err != nil {
@@ -110,7 +110,8 @@ func (b *Bot) commandAnnouncementsDisable(ctx context.Context, data cmdroute.Com
 			return err
 		}
 		content = "Announcements disabled for this server."
-		return nil
+
+		return b.refreshAnnouncementJob(ctx, q)
 	})
 	if err != nil {
 		return errorResponse(err)
@@ -149,7 +150,7 @@ func (b *Bot) commandAnnouncementsEnable(ctx context.Context, data cmdroute.Comm
 		startsAt, err := options.FutureTimeInLocation(
 			"starts_at",
 			"location",
-			max(time.Minute, b.loopInterval*2),
+			time.Minute,
 			data.Options,
 		)
 		if err != nil {
@@ -159,7 +160,7 @@ func (b *Bot) commandAnnouncementsEnable(ctx context.Context, data cmdroute.Comm
 		endsAt, err := options.FutureTimeInLocation(
 			"ends_at",
 			"location",
-			max(time.Minute, b.loopInterval*2),
+			time.Minute,
 			data.Options,
 		)
 		if err != nil {
@@ -192,7 +193,7 @@ func (b *Bot) commandAnnouncementsEnable(ctx context.Context, data cmdroute.Comm
 			format.DiscordLongDateTime(startsAt),
 			targetChannelID.Mention(),
 		)
-		return nil
+		return b.refreshJobSchedules(ctx, q)
 	})
 	if err != nil {
 		return errorResponse(err)

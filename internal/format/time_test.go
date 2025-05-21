@@ -14,4 +14,8 @@ func TestDuration(t *testing.T) {
 	expected = "1 hour"
 	got = Duration(1 * time.Hour)
 	assert.Equal(t, expected, got)
+
+	expected = "15 minutes"
+	got = Duration(14*time.Minute + 30*time.Second)
+	assert.Equal(t, expected, got)
 }

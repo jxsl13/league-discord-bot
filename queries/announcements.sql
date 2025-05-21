@@ -73,4 +73,18 @@ WHERE guild_id IN (sqlc.slice('guild_id'));
 SELECT COUNT(*)
 FROM announcements;
 
+-- name: NextAnnouncement :one
+SELECT
+    guild_id,
+    starts_at,
+    ends_at,
+    channel_id,
+    interval,
+    last_announced_at,
+    custom_text_before,
+    custom_text_after
+FROM announcements
+ORDER BY last_announced_at
+LIMIT 1;
+
 

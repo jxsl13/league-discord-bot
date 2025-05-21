@@ -142,7 +142,7 @@ func (b *Bot) commandNotificationsDelete(ctx context.Context, data cmdroute.Comm
 			return fmt.Errorf("error deleting notification for %s at position %d: %w", channelID.Mention(), n, err)
 		}
 
-		return nil
+		return b.refreshJobSchedules(ctx, q)
 	})
 	if err != nil {
 		return errorResponse(err)
@@ -213,7 +213,7 @@ func (b *Bot) commandNotificationsAdd(ctx context.Context, data cmdroute.Command
 			return fmt.Errorf("error adding notification for %s: %w", channelID.Mention(), err)
 		}
 
-		return nil
+		return b.refreshJobSchedules(ctx, q)
 	})
 	if err != nil {
 		return errorResponse(err)

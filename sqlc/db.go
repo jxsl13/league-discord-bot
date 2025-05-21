@@ -231,8 +231,23 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.listNowDueParticipationRequirementsStmt, err = db.PrepareContext(ctx, listNowDueParticipationRequirements); err != nil {
 		return nil, fmt.Errorf("error preparing query ListNowDueParticipationRequirements: %w", err)
 	}
+	if q.nextAccessibleChannelStmt, err = db.PrepareContext(ctx, nextAccessibleChannel); err != nil {
+		return nil, fmt.Errorf("error preparing query NextAccessibleChannel: %w", err)
+	}
+	if q.nextAnnouncementStmt, err = db.PrepareContext(ctx, nextAnnouncement); err != nil {
+		return nil, fmt.Errorf("error preparing query NextAnnouncement: %w", err)
+	}
+	if q.nextDeletableChannelStmt, err = db.PrepareContext(ctx, nextDeletableChannel); err != nil {
+		return nil, fmt.Errorf("error preparing query NextDeletableChannel: %w", err)
+	}
 	if q.nextMatchCounterStmt, err = db.PrepareContext(ctx, nextMatchCounter); err != nil {
 		return nil, fmt.Errorf("error preparing query NextMatchCounter: %w", err)
+	}
+	if q.nextNotificationStmt, err = db.PrepareContext(ctx, nextNotification); err != nil {
+		return nil, fmt.Errorf("error preparing query NextNotification: %w", err)
+	}
+	if q.nextParticipationRequirementStmt, err = db.PrepareContext(ctx, nextParticipationRequirement); err != nil {
+		return nil, fmt.Errorf("error preparing query NextParticipationRequirement: %w", err)
 	}
 	if q.removeGuildRoleAccessStmt, err = db.PrepareContext(ctx, removeGuildRoleAccess); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveGuildRoleAccess: %w", err)
@@ -629,9 +644,34 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing listNowDueParticipationRequirementsStmt: %w", cerr)
 		}
 	}
+	if q.nextAccessibleChannelStmt != nil {
+		if cerr := q.nextAccessibleChannelStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextAccessibleChannelStmt: %w", cerr)
+		}
+	}
+	if q.nextAnnouncementStmt != nil {
+		if cerr := q.nextAnnouncementStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextAnnouncementStmt: %w", cerr)
+		}
+	}
+	if q.nextDeletableChannelStmt != nil {
+		if cerr := q.nextDeletableChannelStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextDeletableChannelStmt: %w", cerr)
+		}
+	}
 	if q.nextMatchCounterStmt != nil {
 		if cerr := q.nextMatchCounterStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing nextMatchCounterStmt: %w", cerr)
+		}
+	}
+	if q.nextNotificationStmt != nil {
+		if cerr := q.nextNotificationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextNotificationStmt: %w", cerr)
+		}
+	}
+	if q.nextParticipationRequirementStmt != nil {
+		if cerr := q.nextParticipationRequirementStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextParticipationRequirementStmt: %w", cerr)
 		}
 	}
 	if q.removeGuildRoleAccessStmt != nil {
@@ -817,7 +857,12 @@ type Queries struct {
 	listNowDueAnnouncementsStmt                *sql.Stmt
 	listNowDueNotificationsStmt                *sql.Stmt
 	listNowDueParticipationRequirementsStmt    *sql.Stmt
+	nextAccessibleChannelStmt                  *sql.Stmt
+	nextAnnouncementStmt                       *sql.Stmt
+	nextDeletableChannelStmt                   *sql.Stmt
 	nextMatchCounterStmt                       *sql.Stmt
+	nextNotificationStmt                       *sql.Stmt
+	nextParticipationRequirementStmt           *sql.Stmt
 	removeGuildRoleAccessStmt                  *sql.Stmt
 	removeGuildUserAccessStmt                  *sql.Stmt
 	rescheduleMatchStmt                        *sql.Stmt
@@ -908,7 +953,12 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		listNowDueAnnouncementsStmt:                q.listNowDueAnnouncementsStmt,
 		listNowDueNotificationsStmt:                q.listNowDueNotificationsStmt,
 		listNowDueParticipationRequirementsStmt:    q.listNowDueParticipationRequirementsStmt,
+		nextAccessibleChannelStmt:                  q.nextAccessibleChannelStmt,
+		nextAnnouncementStmt:                       q.nextAnnouncementStmt,
+		nextDeletableChannelStmt:                   q.nextDeletableChannelStmt,
 		nextMatchCounterStmt:                       q.nextMatchCounterStmt,
+		nextNotificationStmt:                       q.nextNotificationStmt,
+		nextParticipationRequirementStmt:           q.nextParticipationRequirementStmt,
 		removeGuildRoleAccessStmt:                  q.removeGuildRoleAccessStmt,
 		removeGuildUserAccessStmt:                  q.removeGuildUserAccessStmt,
 		rescheduleMatchStmt:                        q.rescheduleMatchStmt,

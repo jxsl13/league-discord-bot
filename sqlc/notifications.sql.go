@@ -210,3 +210,32 @@ func (q *Queries) ListNowDueNotifications(ctx context.Context) ([]Notification, 
 	}
 	return items, nil
 }
+
+const nextNotification = `-- name: NextNotification :one
+SELECT
+    channel_id,
+    notify_at,
+    custom_text,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM notifications
+ORDER BY notify_at ASC
+LIMIT 1
+`
+
+func (q *Queries) NextNotification(ctx context.Context) (Notification, error) {
+	row := q.queryRow(ctx, q.nextNotificationStmt, nextNotification)
+	var i Notification
+	err := row.Scan(
+		&i.ChannelID,
+		&i.NotifyAt,
+		&i.CustomText,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}

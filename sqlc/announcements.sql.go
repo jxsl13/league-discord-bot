@@ -192,3 +192,34 @@ func (q *Queries) ListNowDueAnnouncements(ctx context.Context) ([]Announcement, 
 	}
 	return items, nil
 }
+
+const nextAnnouncement = `-- name: NextAnnouncement :one
+SELECT
+    guild_id,
+    starts_at,
+    ends_at,
+    channel_id,
+    interval,
+    last_announced_at,
+    custom_text_before,
+    custom_text_after
+FROM announcements
+ORDER BY last_announced_at
+LIMIT 1
+`
+
+func (q *Queries) NextAnnouncement(ctx context.Context) (Announcement, error) {
+	row := q.queryRow(ctx, q.nextAnnouncementStmt, nextAnnouncement)
+	var i Announcement
+	err := row.Scan(
+		&i.GuildID,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.ChannelID,
+		&i.Interval,
+		&i.LastAnnouncedAt,
+		&i.CustomTextBefore,
+		&i.CustomTextAfter,
+	)
+	return i, err
+}

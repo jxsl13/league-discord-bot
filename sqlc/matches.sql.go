@@ -472,6 +472,112 @@ func (q *Queries) ListNowDeletableChannels(ctx context.Context) ([]ListNowDeleta
 	return items, nil
 }
 
+const nextAccessibleChannel = `-- name: NextAccessibleChannel :one
+SELECT
+    guild_id,
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    scheduled_at,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+WHERE matches.channel_accessible = 0
+ORDER BY channel_accessible_at ASC
+LIMIT 1
+`
+
+type NextAccessibleChannelRow struct {
+	GuildID             string `db:"guild_id"`
+	ChannelID           string `db:"channel_id"`
+	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
+	ChannelAccessible   int64  `db:"channel_accessible"`
+	ChannelDeleteAt     int64  `db:"channel_delete_at"`
+	MessageID           string `db:"message_id"`
+	ScheduledAt         int64  `db:"scheduled_at"`
+	CreatedAt           int64  `db:"created_at"`
+	CreatedBy           string `db:"created_by"`
+	UpdatedAt           int64  `db:"updated_at"`
+	UpdatedBy           string `db:"updated_by"`
+}
+
+func (q *Queries) NextAccessibleChannel(ctx context.Context) (NextAccessibleChannelRow, error) {
+	row := q.queryRow(ctx, q.nextAccessibleChannelStmt, nextAccessibleChannel)
+	var i NextAccessibleChannelRow
+	err := row.Scan(
+		&i.GuildID,
+		&i.ChannelID,
+		&i.ChannelAccessibleAt,
+		&i.ChannelAccessible,
+		&i.ChannelDeleteAt,
+		&i.MessageID,
+		&i.ScheduledAt,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
+const nextDeletableChannel = `-- name: NextDeletableChannel :one
+SELECT
+    guild_id,
+    channel_id,
+    channel_accessible_at,
+    channel_accessible,
+    channel_delete_at,
+    message_id,
+    event_id,
+    scheduled_at,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+FROM matches
+ORDER BY channel_delete_at ASC
+LIMIT 1
+`
+
+type NextDeletableChannelRow struct {
+	GuildID             string `db:"guild_id"`
+	ChannelID           string `db:"channel_id"`
+	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
+	ChannelAccessible   int64  `db:"channel_accessible"`
+	ChannelDeleteAt     int64  `db:"channel_delete_at"`
+	MessageID           string `db:"message_id"`
+	EventID             string `db:"event_id"`
+	ScheduledAt         int64  `db:"scheduled_at"`
+	CreatedAt           int64  `db:"created_at"`
+	CreatedBy           string `db:"created_by"`
+	UpdatedAt           int64  `db:"updated_at"`
+	UpdatedBy           string `db:"updated_by"`
+}
+
+func (q *Queries) NextDeletableChannel(ctx context.Context) (NextDeletableChannelRow, error) {
+	row := q.queryRow(ctx, q.nextDeletableChannelStmt, nextDeletableChannel)
+	var i NextDeletableChannelRow
+	err := row.Scan(
+		&i.GuildID,
+		&i.ChannelID,
+		&i.ChannelAccessibleAt,
+		&i.ChannelAccessible,
+		&i.ChannelDeleteAt,
+		&i.MessageID,
+		&i.EventID,
+		&i.ScheduledAt,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
 const rescheduleMatch = `-- name: RescheduleMatch :exec
 UPDATE matches
 SET

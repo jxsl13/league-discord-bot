@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,27 +19,35 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/jxs13/league-discord-bot/internal/format"
 	"github.com/jxs13/league-discord-bot/internal/parse"
+	"github.com/jxs13/league-discord-bot/internal/timeutils"
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
 type Bot struct {
-	ctx    context.Context
-	state  *state.State
-	db     *sql.DB
-	userID discord.UserID
-	wg     *sync.WaitGroup
+	ctx         context.Context
+	cancelCause context.CancelCauseFunc
+	state       *state.State
+	db          *sql.DB
+	userID      discord.UserID
+	wg          *sync.WaitGroup
 
 	defaultNotificationOffsets []time.Duration
 	defaultChannelAccessOffset time.Duration
 	defaulRequirementsOffset   time.Duration
 	defaultChannelDeleteOffset time.Duration
 
-	loopInterval time.Duration
-	scheduler    gocron.Scheduler
-
 	backupDir      string
 	backupFile     string
 	backupInterval time.Duration
+
+	scheduler gocron.Scheduler
+
+	jobMu                       sync.Mutex
+	announcementJob             gocron.Job
+	channelAccessJob            gocron.Job
+	channelDeleteJob            gocron.Job
+	notificationsJob            gocron.Job
+	participationRequirementJob gocron.Job
 }
 
 type JobDefinition struct {
@@ -100,7 +109,6 @@ func New(
 	token string,
 	db *sql.DB,
 	defaultNotificationOffsets []time.Duration,
-	loopInterval time.Duration,
 	defaultChannelAccessOffset time.Duration,
 	defaulRequirementsOffset time.Duration,
 	defaultChannelDeleteOffset time.Duration,
@@ -114,9 +122,12 @@ func New(
 		return nil, fmt.Errorf("failed to create scheduler: %w", err)
 	}
 
+	ctx, cancelCause := context.WithCancelCause(ctx)
+
 	s := state.New("Bot " + token)
 	bot := &Bot{
 		ctx:                        ctx,
+		cancelCause:                cancelCause,
 		state:                      s,
 		db:                         db,
 		wg:                         &sync.WaitGroup{},
@@ -124,7 +135,6 @@ func New(
 		defaultChannelAccessOffset: defaultChannelAccessOffset,
 		defaulRequirementsOffset:   defaulRequirementsOffset,
 		defaultChannelDeleteOffset: defaultChannelDeleteOffset,
-		loopInterval:               loopInterval,
 		scheduler:                  scheduler,
 		backupDir:                  backupDir,
 		backupFile:                 backupFile,
@@ -143,25 +153,35 @@ func New(
 
 			me, err := s.Me()
 			if err != nil {
-				log.Fatalf("failed to get bot user: %v", err)
+				bot.cancelCause(fmt.Errorf("failed to get bot user: %w", err))
+				return
 			}
 			bot.userID = me.ID
 
 			// print statistics on startup
 			bot.printDailyStatistics()
 
-			bot.scheduler.NewJob(
+			_, err = bot.scheduler.NewJob(
 				gocron.DailyJob(1, gocron.NewAtTimes(gocron.NewAtTime(0, 0, 0))),
 				gocron.NewTask(bot.printDailyStatistics),
 			)
+			if err != nil {
+				bot.cancelCause(fmt.Errorf("failed to create daily statistics job: %w", err))
+				return
+			}
 
 			if bot.backupInterval > 0 {
-				bot.scheduler.NewJob(
+				_, err = bot.scheduler.NewJob(
 					SelectJobDefinition(bot.backupInterval),
 					gocron.NewTask(bot.createBackup),
 				)
+				if err != nil {
+					bot.cancelCause(fmt.Errorf("failed to create backup job: %w", err))
+					return
+				}
+
 				// cleanup every month
-				bot.scheduler.NewJob(
+				_, err = bot.scheduler.NewJob(
 					gocron.MonthlyJob(1,
 						gocron.NewDaysOfTheMonth(1),
 						gocron.NewAtTimes(
@@ -170,14 +190,17 @@ func New(
 					),
 					gocron.NewTask(bot.compressBackups),
 				)
+				if err != nil {
+					bot.cancelCause(fmt.Errorf("failed to create backup compression job: %w", err))
+					return
+				}
 			}
 
-			loopDuration := gocron.DurationJob(loopInterval)
-			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncGrantChannelAccess))
-			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncNotifications))
-			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncDeleteExpiredChannels))
-			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncCheckParticipationDeadline))
-			bot.scheduler.NewJob(loopDuration, gocron.NewTask(bot.asyncAnnouncements))
+			err = bot.TxQueries(ctx, bot.refreshJobSchedules)
+			if err != nil {
+				bot.cancelCause(fmt.Errorf("failed to initially refresh job schedules: %w", err))
+				return
+			}
 		})
 	})
 
@@ -227,12 +250,287 @@ func (b *Bot) Connect(ctx context.Context) error {
 }
 
 func (b *Bot) Close() error {
+	b.cancelCause(errors.New("bot closed"))
 	defer b.wg.Wait()
 
 	return errors.Join(
 		b.state.Close(),
 		b.scheduler.Shutdown(),
 	)
+}
+
+func (b *Bot) refreshAccessJob(ctx context.Context, q *sqlc.Queries) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("failed to refresh access job: %w", err)
+		}
+	}()
+	accessible, err := q.NextAccessibleChannel(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get next accessible channel: %w", err)
+	}
+
+	b.jobMu.Lock()
+	defer b.jobMu.Unlock()
+
+	b.channelAccessJob, err = b.rescheduleJob(
+		b.channelAccessJob,
+		accessible.ChannelAccessible,
+		b.asyncGrantChannelAccess,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reschedule channel access job: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Bot) refreshNotificationJob(ctx context.Context, q *sqlc.Queries) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("failed to refresh notification job: %w", err)
+		}
+	}()
+	notification, err := q.NextNotification(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get next notification: %w", err)
+	}
+
+	b.jobMu.Lock()
+	defer b.jobMu.Unlock()
+
+	b.notificationsJob, err = b.rescheduleJob(
+		b.notificationsJob,
+		notification.NotifyAt,
+		b.asyncNotifications,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reschedule notifications job: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Bot) refreshParticipationRequirementJob(ctx context.Context, q *sqlc.Queries) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("failed to refresh participation requirement job: %w", err)
+		}
+	}()
+	participationRequirement, err := q.NextParticipationRequirement(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get next participation requirement: %w", err)
+	}
+
+	b.jobMu.Lock()
+	defer b.jobMu.Unlock()
+
+	b.participationRequirementJob, err = b.rescheduleJob(
+		b.participationRequirementJob,
+		participationRequirement.DeadlineAt,
+		b.asyncCheckParticipationDeadline,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reschedule participation requirement job: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Bot) refreshChannelDeleteJob(ctx context.Context, q *sqlc.Queries) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("failed to refresh channel delete job: %w", err)
+		}
+	}()
+	deletable, err := q.NextDeletableChannel(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get next deletable channel: %w", err)
+	}
+
+	b.jobMu.Lock()
+	defer b.jobMu.Unlock()
+
+	b.channelDeleteJob, err = b.rescheduleJob(
+		b.channelDeleteJob,
+		deletable.ChannelDeleteAt,
+		b.asyncDeleteExpiredChannels,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reschedule channel delete job: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Bot) refreshAnnouncementJob(ctx context.Context, q *sqlc.Queries) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("failed to refresh announcement job: %w", err)
+		}
+	}()
+	announcement, err := q.NextAnnouncement(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get next announcement: %w", err)
+	}
+
+	b.jobMu.Lock()
+	defer b.jobMu.Unlock()
+
+	b.announcementJob, err = b.rescheduleJob(
+		b.announcementJob,
+		announcement.LastAnnouncedAt+announcement.Interval,
+		b.asyncAnnouncements,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reschedule announcement job: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Bot) refreshJobSchedules(ctx context.Context, q *sqlc.Queries) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("failed to refresh job schedules: %w", err)
+		}
+	}()
+	accessible, err := q.NextAccessibleChannel(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get next accessible channel: %w", err)
+	}
+
+	deletable, err := q.NextDeletableChannel(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get next deletable channel: %w", err)
+	}
+
+	notification, err := q.NextNotification(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get next notification: %w", err)
+	}
+
+	participationRequirement, err := q.NextParticipationRequirement(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get next participation requirement: %w", err)
+
+	}
+
+	announcement, err := q.NextAnnouncement(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get next announcement: %w", err)
+	}
+
+	b.jobMu.Lock()
+	defer b.jobMu.Unlock()
+
+	b.channelAccessJob, err = b.rescheduleJob(
+		b.channelAccessJob,
+		accessible.ChannelAccessible,
+		b.asyncGrantChannelAccess,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reschedule channel access job: %w", err)
+	}
+
+	b.channelDeleteJob, err = b.rescheduleJob(
+		b.channelDeleteJob,
+		deletable.ChannelDeleteAt,
+		b.asyncDeleteExpiredChannels,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reschedule channel delete job: %w", err)
+	}
+
+	b.notificationsJob, err = b.rescheduleJob(
+		b.notificationsJob,
+		notification.NotifyAt,
+		b.asyncNotifications,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reschedule notifications job: %w", err)
+	}
+
+	b.participationRequirementJob, err = b.rescheduleJob(
+		b.participationRequirementJob,
+		participationRequirement.DeadlineAt,
+		b.asyncCheckParticipationDeadline,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reschedule participation requirement job: %w", err)
+	}
+
+	b.announcementJob, err = b.rescheduleJob(
+		b.announcementJob,
+		announcement.LastAnnouncedAt+announcement.Interval,
+		b.asyncAnnouncements,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reschedule announcement job: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Bot) rescheduleJob(job gocron.Job, epoch int64, function any, parameters ...any) (_ gocron.Job, err error) {
+	if max(epoch, 0) == 0 {
+		if job != nil {
+			log.Println("disabling job", funcName(job.Name()))
+		}
+		return nil, nil
+	}
+
+	if job == nil {
+		return b.newUnixJob(epoch, function, parameters...)
+	}
+
+	// wait 30 seconds more in order to fetch more db entries at once.
+	epochAdjusted := timeutils.Ceil(time.Unix(epoch, 0), time.Minute/2).Unix()
+
+	nextRun, err := job.NextRun()
+	if err == nil && !nextRun.IsZero() {
+		if nextRun.Unix() <= epochAdjusted {
+			// no need to reschedule
+			log.Println("not updating job", funcName(job.Name()), "starting at", time.Unix(nextRun.Unix(), 0), "to", time.Unix(epochAdjusted, 0))
+			return job, nil
+		}
+	}
+
+	log.Println("rescheduling job", funcName(job.Name()), "to", time.Unix(epochAdjusted, 0))
+	return b.scheduler.Update(
+		job.ID(),
+		newJobDefinitionUnix(epochAdjusted),
+		gocron.NewTask(function, parameters...),
+	)
+}
+
+func (b *Bot) newUnixJob(epoch int64, function any, parameters ...any) (gocron.Job, error) {
+	j, err := b.scheduler.NewJob(
+		newJobDefinitionUnix(epoch),
+		gocron.NewTask(function, parameters...),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new job: %w", err)
+	}
+
+	log.Println("scheduling job", funcName(j.Name()), "at", time.Unix(epoch, 0))
+	return j, nil
+}
+
+func funcName(f string) string {
+	parts := strings.Split(f, ".")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return f
+}
+
+func newJobDefinitionUnix(epoch int64) gocron.JobDefinition {
+	nowUnix := time.Now().Unix()
+	if epoch <= nowUnix {
+		return gocron.OneTimeJob(gocron.OneTimeJobStartImmediately())
+	}
+	return gocron.OneTimeJob(gocron.OneTimeJobStartDateTime(time.Unix(epoch, 0)))
 }
 
 func (b *Bot) isMe(userID discord.UserID) bool {
@@ -261,7 +559,9 @@ func (b *Bot) TxQueries(ctx context.Context, f func(ctx context.Context, q *sqlc
 		return err
 	}
 	defer func() {
-		err = errors.Join(err, tx.Rollback())
+		if err != nil {
+			err = errors.Join(err, tx.Rollback())
+		}
 	}()
 
 	d := sqlc.New(tx)

@@ -55,7 +55,8 @@ func (b *Bot) handleChannelDelete(e *gateway.ChannelDeleteEvent) {
 			if err != nil {
 				return fmt.Errorf("error deleting match for channel %s: %w", channelID, err)
 			}
-			return nil
+
+			return b.refreshJobSchedules(ctx, q)
 		}
 
 		// category channel -> guild config was modified

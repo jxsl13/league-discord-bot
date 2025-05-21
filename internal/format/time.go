@@ -35,7 +35,7 @@ func Duration(d time.Duration) string {
 		}
 	}
 
-	factor := d / scalar.numeric
+	factor := (d.Round(scalar.numeric) / scalar.numeric)
 
 	plural := factor != 1
 	unit := scalar.plural

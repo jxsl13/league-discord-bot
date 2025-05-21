@@ -38,7 +38,6 @@ Environment variables:
   DSN                            database file path (DSN) (default: "league.db")
   DISCORD_TOKEN                  discord bot token
   BACKUP_INTERVAL                interval for creating backups, e.g. 0s (disabled), 1m, 1h, 12h, 24h, 168h, 720h (default: "24h0m0s")
-  ASYNC_LOOP_INTERVAL            interval for async loops, should be a small value e.g. 10s, 30s, 1m (default: "15s")
   REMINDER_INTERVALS             default guild configuration list of reminder intervals to remind players before a match, e.g. 24h,1h,15m,5m,30s
   GUILD_CHANNEL_ACCESS_OFFSET    default time offset for granting access to channels before a match (default: "168h0m0s")
   REQUIREMENTS_OFFSET            default time offset for participation requirements to be met before a match (default: "24h0m0s")
@@ -53,7 +52,6 @@ Available Commands:
   help        Help about any command
 
 Flags:
-      --async-loop-interval duration           interval for async loops, should be a small value e.g. 10s, 30s, 1m (default 15s)
       --backup-interval duration               interval for creating backups, e.g. 0s (disabled), 1m, 1h, 12h, 24h, 168h, 720h (default 24h0m0s)
   -c, --config string                          .env config file path (or via env variable CONFIG)
       --discord-token string                   discord bot token
@@ -66,4 +64,3 @@ Flags:
 
 Use "league-discord-bot [command] --help" for more information about a command.
 ```
-

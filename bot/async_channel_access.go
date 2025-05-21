@@ -35,7 +35,7 @@ var (
 		discord.PermissionUseSlashCommands
 )
 
-func (b *Bot) asyncGrantChannelAccess(ctx context.Context) (d time.Duration, err error) {
+func (b *Bot) asyncGrantChannelAccess() (err error) {
 	defer func() {
 		if err != nil {
 			log.Printf("error in channel access routine: %v", err)
@@ -75,9 +75,15 @@ func (b *Bot) asyncGrantChannelAccess(ctx context.Context) (d time.Duration, err
 		}
 
 		if len(orphanedMatches) > 0 {
+			// refreshes the job schedules
 			err = b.deleteOphanedMatches(ctx, q, orphanedMatches...)
 			if err != nil {
 				return err
+			}
+		} else {
+			err = b.refreshAccessJob(ctx, q)
+			if err != nil {
+				return fmt.Errorf("error refreshing job schedules: %w", err)
 			}
 		}
 
@@ -103,17 +109,15 @@ func (b *Bot) asyncGrantChannelAccess(ctx context.Context) (d time.Duration, err
 			}
 		}
 
-		// TODO: might need to check when the next channel is accessible
-		// and return that time, in case it is shorter than the usual interval
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	// important that we do not overwrite this with 0,
 	// because it might have been set in the transaction closure
-	return d, nil
+	return nil
 }
 
 func (b *Bot) grantSingleChannelAccess(ctx context.Context, q *sqlc.Queries, a sqlc.ListNowAccessibleChannelsRow) (param *GuildEventParam, err error) {

@@ -19,7 +19,6 @@ func New() *Config {
 		ChannelAccessOffset: 7 * 24 * time.Hour,
 		RequirementsOffset:  24 * time.Hour,
 		ChannelDeleteOffset: 1 * time.Hour,
-		AsyncLoopInterval:   15 * time.Second,
 		ReminderIntervals:   []time.Duration{24 * time.Hour, 1 * time.Hour, 15 * time.Minute, 5 * time.Minute, 30 * time.Second},
 	}
 }
@@ -30,8 +29,6 @@ type Config struct {
 	BackupInterval time.Duration `koanf:"backup.interval" description:"interval for creating backups, e.g. 0s (disabled), 1m, 1h, 12h, 24h, 168h, 720h"`
 	BackupDir      string
 	BackupFile     string
-
-	AsyncLoopInterval time.Duration `koanf:"async.loop.interval" description:"interval for async loops, should be a small value e.g. 10s, 30s, 1m"`
 
 	ReminderIntervalsString string `koanf:"reminder.intervals" description:"default guild configuration list of reminder intervals to remind players before a match, e.g. 24h,1h,15m,5m,30s"`
 	ReminderIntervals       []time.Duration
@@ -49,14 +46,6 @@ func (c *Config) Validate() error {
 
 	if c.DSN == "" {
 		return errors.New("database DSN is missing")
-	}
-
-	if c.AsyncLoopInterval < 1*time.Second {
-		return fmt.Errorf("async loop interval must be greater or equal to 1s, e.g. 10s, 30s, 1m")
-	}
-
-	if c.AsyncLoopInterval > 5*time.Minute {
-		return fmt.Errorf("async loop interval must be smaller than or equal to 5m, e.g. 10s, 30s, 1m")
 	}
 
 	err := ValidatableGuildConfig(c.ChannelAccessOffset, c.RequirementsOffset, c.ChannelDeleteOffset)

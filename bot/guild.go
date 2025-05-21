@@ -59,7 +59,6 @@ func (b *Bot) commandGuildConfiguration(ctx context.Context, data cmdroute.Comma
 		sb.WriteString("notification_offsets: ")
 		sb.WriteString(format.MarkdownInlineCodeBlock(notificationOffsets))
 		sb.WriteString(" list of points in time before the match, at which automatic notifications are created for the participants")
-		sb.WriteString(fmt.Sprintf(" (suggested: your duration + %s)\n\n", b.loopInterval*2))
 		sb.WriteString("requirements_offset: ")
 		sb.WriteString(format.MarkdownInlineCodeBlock(requirementsOffset.String()))
 		sb.WriteString(" point in time before the match at which the participation requirements need to be met.\n\n")
@@ -289,7 +288,8 @@ func (b *Bot) handleRemoveGuild(e *gateway.GuildDeleteEvent) {
 			return fmt.Errorf("error deleting guild %d: %v", e.ID, err)
 		}
 		log.Printf("deleted guild %d", e.ID)
-		return nil
+
+		return b.refreshJobSchedules(ctx, q)
 	})
 
 	if err != nil {

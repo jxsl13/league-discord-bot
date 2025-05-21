@@ -17,13 +17,13 @@ import (
 	"github.com/jxs13/league-discord-bot/sqlc"
 )
 
-func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Duration, err error) {
+func (b *Bot) asyncCheckParticipationDeadline() (err error) {
 	defer func() {
 		if err != nil {
 			log.Printf("error in check participation requirements routine: %v", err)
 		}
 	}()
-	err = b.TxQueries(ctx, func(ctx context.Context, q *sqlc.Queries) error {
+	err = b.TxQueries(b.ctx, func(ctx context.Context, q *sqlc.Queries) error {
 		requirements, err := q.ListNowDueParticipationRequirements(ctx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -31,6 +31,10 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 				return nil
 			}
 			return fmt.Errorf("error getting due participation requirements: %w", err)
+		}
+
+		if len(requirements) == 0 {
+			return nil
 		}
 
 		orphanedMatches := make([]string, 0)
@@ -162,7 +166,13 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 		}
 
 		if len(orphanedMatches) > 0 {
+			// refreshes all jobs
 			err = b.deleteOphanedMatches(ctx, q, orphanedMatches...)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = b.refreshParticipationRequirementJob(ctx, q)
 			if err != nil {
 				return err
 			}
@@ -171,11 +181,11 @@ func (b *Bot) asyncCheckParticipationDeadline(ctx context.Context) (d time.Durat
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		return err
 	}
 	// important that we do not overwrite this with 0,
 	// because it might have been set in the transaction closure
-	return d, nil
+	return nil
 }
 
 func (b *Bot) getConfirmedParticipants(

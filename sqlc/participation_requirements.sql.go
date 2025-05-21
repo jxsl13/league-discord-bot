@@ -124,6 +124,30 @@ func (q *Queries) ListNowDueParticipationRequirements(ctx context.Context) ([]Pa
 	return items, nil
 }
 
+const nextParticipationRequirement = `-- name: NextParticipationRequirement :one
+SELECT
+    channel_id,
+    participants_per_team,
+    deadline_at,
+    entry_closed
+FROM participation_requirements
+WHERE participation_requirements.entry_closed = 0
+ORDER BY deadline_at ASC
+LIMIT 1
+`
+
+func (q *Queries) NextParticipationRequirement(ctx context.Context) (ParticipationRequirement, error) {
+	row := q.queryRow(ctx, q.nextParticipationRequirementStmt, nextParticipationRequirement)
+	var i ParticipationRequirement
+	err := row.Scan(
+		&i.ChannelID,
+		&i.ParticipantsPerTeam,
+		&i.DeadlineAt,
+		&i.EntryClosed,
+	)
+	return i, err
+}
+
 const updateParticipationRequirements = `-- name: UpdateParticipationRequirements :exec
 UPDATE participation_requirements
 SET
