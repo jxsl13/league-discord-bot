@@ -526,6 +526,7 @@ func funcName(f string) string {
 }
 
 func newJobDefinitionUnix(epoch int64) gocron.JobDefinition {
+	// when not in the future, schedule immediately.
 	nowUnix := time.Now().Unix()
 	if epoch <= nowUnix {
 		return gocron.OneTimeJob(gocron.OneTimeJobStartImmediately())
