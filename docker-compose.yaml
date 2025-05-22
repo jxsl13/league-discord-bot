@@ -10,8 +10,7 @@ services:
     environment:
       TZ: "Europe/Berlin"
       BACKUP_INTERVAL: "168h"
-      REMINDER_INTERVALS: "24h0m30s,1h0m30s,15m30s,5m30s,30s"
-      ASYNC_LOOP_INTERVAL: "15s"
+      REMINDER_INTERVALS: "24h0m,1h0m,15m,5m,30s"
       GUILD_CHANNEL_DELETE_OFFSET: "24h"
       GUILD_CHANNEL_ACCESS_OFFSET: "168h"
       REQUIREMENTS_OFFSET: "24h"
