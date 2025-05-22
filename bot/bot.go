@@ -205,6 +205,7 @@ func New(
 	})
 
 	// requires guild message intents
+
 	s.AddHandler(bot.handleAddGuild)
 	s.AddHandler(bot.handleRemoveGuild)
 
@@ -218,6 +219,10 @@ func New(
 	s.AddHandler(bot.handleAutocompletionLocationInteraction)
 
 	r := cmdroute.NewRouter()
+	// Automatically defer handles if they're slow.
+	r.Use(cmdroute.Deferrable(s, cmdroute.DeferOpts{
+		Flags: discord.EphemeralMessage,
+	}))
 
 	// admin commands
 	r.AddFunc("configure", bot.commandGuildConfigure)
@@ -491,7 +496,7 @@ func (b *Bot) rescheduleJob(job gocron.Job, epoch int64, function any, parameter
 	if err == nil && !nextRun.IsZero() {
 		if nextRun.Unix() <= epochAdjusted {
 			// no need to reschedule
-			log.Println("not updating job", funcName(job.Name()), "starting at", time.Unix(nextRun.Unix(), 0), "to", time.Unix(epochAdjusted, 0))
+			//log.Println("not updating job", funcName(job.Name()), "starting at", time.Unix(nextRun.Unix(), 0), "to", time.Unix(epochAdjusted, 0))
 			return job, nil
 		}
 	}
