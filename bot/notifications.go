@@ -142,7 +142,18 @@ func (b *Bot) commandNotificationsDelete(ctx context.Context, data cmdroute.Comm
 			return fmt.Errorf("error deleting notification for %s at position %d: %w", channelID.Mention(), n, err)
 		}
 
-		return b.refreshJobSchedules(ctx, q)
+		err = b.refreshJobSchedules(ctx, q)
+		if err != nil {
+			return err
+		}
+
+		result = fmt.Sprintf(
+			"Notification %d (%s) deleted for %s",
+			n,
+			format.DiscordLongDateTime(time.Unix(notification.NotifyAt, 0)),
+			channelID.Mention(),
+		)
+		return nil
 	})
 	if err != nil {
 		return errorResponse(err)
