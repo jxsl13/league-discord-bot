@@ -58,7 +58,7 @@ func (b *Bot) commandGuildConfiguration(ctx context.Context, data cmdroute.Comma
 		sb.WriteString(" whether to create events in case there is a streamer with a stream_url available\n\n")
 		sb.WriteString("notification_offsets: ")
 		sb.WriteString(format.MarkdownInlineCodeBlock(notificationOffsets))
-		sb.WriteString(" list of points in time before the match, at which automatic notifications are created for the participants")
+		sb.WriteString(" list of points in time before the match, at which automatic notifications are created for the participants\n\n")
 		sb.WriteString("requirements_offset: ")
 		sb.WriteString(format.MarkdownInlineCodeBlock(requirementsOffset.String()))
 		sb.WriteString(" point in time before the match at which the participation requirements need to be met.\n\n")
