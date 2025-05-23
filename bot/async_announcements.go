@@ -110,9 +110,10 @@ func (b *Bot) sendGuildAnnouncement(ctx context.Context, q *sqlc.Queries, announ
 }
 
 func (b *Bot) generateGuildAnnouncement(ctx context.Context, q *sqlc.Queries, announcement sqlc.Announcement) (_ []string, ok bool, err error) {
-	matches, err := q.ListGuildMatchesScheduledUntil(ctx, sqlc.ListGuildMatchesScheduledUntilParams{
-		GuildID:     announcement.GuildID,
-		ScheduledAt: announcement.LastAnnouncedAt + 2*announcement.Interval, // 1st for current time and 2nd for next time
+	matches, err := q.ListGuildMatchesScheduledBetween(ctx, sqlc.ListGuildMatchesScheduledBetweenParams{
+		GuildID: announcement.GuildID,
+		MinAt:   announcement.LastAnnouncedAt + announcement.Interval,
+		MaxAt:   announcement.LastAnnouncedAt + 2*announcement.Interval, // 1st for current time and 2nd for next time
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

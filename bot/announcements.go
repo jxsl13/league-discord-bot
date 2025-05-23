@@ -142,7 +142,7 @@ func (b *Bot) commandAnnouncementsEnable(ctx context.Context, data cmdroute.Comm
 			return err
 		}
 
-		interval, err := options.Duration("interval", time.Hour, 8760*time.Hour, data.Options)
+		interval, err := options.Duration("interval", time.Minute, 8760*time.Hour, data.Options)
 		if err != nil {
 			return err
 		}

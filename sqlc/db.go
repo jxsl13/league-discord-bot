@@ -195,8 +195,8 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.listGuildMatchesStmt, err = db.PrepareContext(ctx, listGuildMatches); err != nil {
 		return nil, fmt.Errorf("error preparing query ListGuildMatches: %w", err)
 	}
-	if q.listGuildMatchesScheduledUntilStmt, err = db.PrepareContext(ctx, listGuildMatchesScheduledUntil); err != nil {
-		return nil, fmt.Errorf("error preparing query ListGuildMatchesScheduledUntil: %w", err)
+	if q.listGuildMatchesScheduledBetweenStmt, err = db.PrepareContext(ctx, listGuildMatchesScheduledBetween); err != nil {
+		return nil, fmt.Errorf("error preparing query ListGuildMatchesScheduledBetween: %w", err)
 	}
 	if q.listGuildRoleAccessStmt, err = db.PrepareContext(ctx, listGuildRoleAccess); err != nil {
 		return nil, fmt.Errorf("error preparing query ListGuildRoleAccess: %w", err)
@@ -584,9 +584,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing listGuildMatchesStmt: %w", cerr)
 		}
 	}
-	if q.listGuildMatchesScheduledUntilStmt != nil {
-		if cerr := q.listGuildMatchesScheduledUntilStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing listGuildMatchesScheduledUntilStmt: %w", cerr)
+	if q.listGuildMatchesScheduledBetweenStmt != nil {
+		if cerr := q.listGuildMatchesScheduledBetweenStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listGuildMatchesScheduledBetweenStmt: %w", cerr)
 		}
 	}
 	if q.listGuildRoleAccessStmt != nil {
@@ -845,7 +845,7 @@ type Queries struct {
 	increaseMatchTeamConfirmedParticipantsStmt *sql.Stmt
 	isGuildEnabledStmt                         *sql.Stmt
 	listGuildMatchesStmt                       *sql.Stmt
-	listGuildMatchesScheduledUntilStmt         *sql.Stmt
+	listGuildMatchesScheduledBetweenStmt       *sql.Stmt
 	listGuildRoleAccessStmt                    *sql.Stmt
 	listGuildUserAccessStmt                    *sql.Stmt
 	listMatchModeratorsStmt                    *sql.Stmt
@@ -941,7 +941,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		increaseMatchTeamConfirmedParticipantsStmt: q.increaseMatchTeamConfirmedParticipantsStmt,
 		isGuildEnabledStmt:                         q.isGuildEnabledStmt,
 		listGuildMatchesStmt:                       q.listGuildMatchesStmt,
-		listGuildMatchesScheduledUntilStmt:         q.listGuildMatchesScheduledUntilStmt,
+		listGuildMatchesScheduledBetweenStmt:       q.listGuildMatchesScheduledBetweenStmt,
 		listGuildRoleAccessStmt:                    q.listGuildRoleAccessStmt,
 		listGuildUserAccessStmt:                    q.listGuildUserAccessStmt,
 		listMatchModeratorsStmt:                    q.listMatchModeratorsStmt,

@@ -186,7 +186,7 @@ WHERE guild_id = :guild_id
 AND event_id = :event_id;
 
 
--- name: ListGuildMatchesScheduledUntil :many
+-- name: ListGuildMatchesScheduledBetween :many
 SELECT
     guild_id,
     channel_id,
@@ -201,7 +201,7 @@ SELECT
     updated_at,
     updated_by
 FROM matches
-WHERE guild_id = :guild_id
-AND scheduled_at <= :scheduled_at
+WHERE scheduled_at BETWEEN :minAt AND :maxAt
+AND guild_id = :guild_id
 ORDER BY scheduled_at ASC;
 

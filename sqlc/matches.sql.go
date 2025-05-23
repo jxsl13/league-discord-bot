@@ -258,7 +258,7 @@ func (q *Queries) ListGuildMatches(ctx context.Context, guildID string) ([]ListG
 	return items, nil
 }
 
-const listGuildMatchesScheduledUntil = `-- name: ListGuildMatchesScheduledUntil :many
+const listGuildMatchesScheduledBetween = `-- name: ListGuildMatchesScheduledBetween :many
 SELECT
     guild_id,
     channel_id,
@@ -273,17 +273,18 @@ SELECT
     updated_at,
     updated_by
 FROM matches
-WHERE guild_id = ?1
-AND scheduled_at <= ?2
+WHERE scheduled_at BETWEEN ?1 AND ?2
+AND guild_id = ?3
 ORDER BY scheduled_at ASC
 `
 
-type ListGuildMatchesScheduledUntilParams struct {
-	GuildID     string `db:"guild_id"`
-	ScheduledAt int64  `db:"scheduled_at"`
+type ListGuildMatchesScheduledBetweenParams struct {
+	MinAt   int64  `db:"minAt"`
+	MaxAt   int64  `db:"maxAt"`
+	GuildID string `db:"guild_id"`
 }
 
-type ListGuildMatchesScheduledUntilRow struct {
+type ListGuildMatchesScheduledBetweenRow struct {
 	GuildID             string `db:"guild_id"`
 	ChannelID           string `db:"channel_id"`
 	ChannelAccessibleAt int64  `db:"channel_accessible_at"`
@@ -298,15 +299,15 @@ type ListGuildMatchesScheduledUntilRow struct {
 	UpdatedBy           string `db:"updated_by"`
 }
 
-func (q *Queries) ListGuildMatchesScheduledUntil(ctx context.Context, arg ListGuildMatchesScheduledUntilParams) ([]ListGuildMatchesScheduledUntilRow, error) {
-	rows, err := q.query(ctx, q.listGuildMatchesScheduledUntilStmt, listGuildMatchesScheduledUntil, arg.GuildID, arg.ScheduledAt)
+func (q *Queries) ListGuildMatchesScheduledBetween(ctx context.Context, arg ListGuildMatchesScheduledBetweenParams) ([]ListGuildMatchesScheduledBetweenRow, error) {
+	rows, err := q.query(ctx, q.listGuildMatchesScheduledBetweenStmt, listGuildMatchesScheduledBetween, arg.MinAt, arg.MaxAt, arg.GuildID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListGuildMatchesScheduledUntilRow{}
+	items := []ListGuildMatchesScheduledBetweenRow{}
 	for rows.Next() {
-		var i ListGuildMatchesScheduledUntilRow
+		var i ListGuildMatchesScheduledBetweenRow
 		if err := rows.Scan(
 			&i.GuildID,
 			&i.ChannelID,
