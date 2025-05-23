@@ -342,32 +342,6 @@ func (b *Bot) refreshParticipationRequirementJob(ctx context.Context, q *sqlc.Qu
 	return nil
 }
 
-func (b *Bot) refreshChannelDeleteJob(ctx context.Context, q *sqlc.Queries) (err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("failed to refresh channel delete job: %w", err)
-		}
-	}()
-	deletable, err := q.NextDeletableChannel(ctx)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("failed to get next deletable channel: %w", err)
-	}
-
-	b.jobMu.Lock()
-	defer b.jobMu.Unlock()
-
-	b.channelDeleteJob, err = b.rescheduleJob(
-		b.channelDeleteJob,
-		deletable.ChannelDeleteAt,
-		b.asyncDeleteExpiredChannels,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to reschedule channel delete job: %w", err)
-	}
-
-	return nil
-}
-
 func (b *Bot) refreshAnnouncementJob(ctx context.Context, q *sqlc.Queries) (err error) {
 	defer func() {
 		if err != nil {
@@ -489,14 +463,14 @@ func (b *Bot) rescheduleJob(job gocron.Job, epoch int64, function any, parameter
 		return b.newUnixJob(epoch, function, parameters...)
 	}
 
-	// wait 30 seconds more in order to fetch more db entries at once.
-	epochAdjusted := timeutils.Ceil(time.Unix(epoch, 0), time.Minute/2).Unix()
+	// wait 2 seconds more in order to fetch more db entries at once.
+	epochAdjusted := timeutils.Ceil(time.Unix(epoch, 0), time.Minute/3).Unix()
 
 	nextRun, err := job.NextRun()
 	if err == nil && !nextRun.IsZero() {
 		if nextRun.Unix() <= epochAdjusted {
 			// no need to reschedule
-			//log.Println("not updating job", funcName(job.Name()), "starting at", time.Unix(nextRun.Unix(), 0), "to", time.Unix(epochAdjusted, 0))
+			log.Println("not updating job", funcName(job.Name()), "starting at", time.Unix(nextRun.Unix(), 0), "to", time.Unix(epochAdjusted, 0))
 			return job, nil
 		}
 	}

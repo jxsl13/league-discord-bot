@@ -93,7 +93,7 @@ func (b *Bot) asyncDeleteExpiredChannels() (err error) {
 				return fmt.Errorf("error deleting orphaned matches: %w", err)
 			}
 		} else {
-			err = b.refreshChannelDeleteJob(ctx, q)
+			err = b.refreshJobSchedules(ctx, q)
 			if err != nil {
 				return err
 			}
